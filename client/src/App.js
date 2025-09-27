@@ -76,7 +76,6 @@ function AppRoutes() {
             user ? (
               user.onboardingComplete ? (
                 <>
-                  <Navbar />
                   <SimpleDashboard />
                 </>
               ) : (
@@ -109,7 +108,6 @@ function AppRoutes() {
             user ? (
               user.onboardingComplete ? (
                 <>
-                  <Navbar />
                   <div>Betting Coming Soon</div>
                 </>
               ) : (
@@ -126,7 +124,6 @@ function AppRoutes() {
           element={
             user ? (
               <>
-                <Navbar />
                 <div>Profile Coming Soon</div>
               </>
             ) : (

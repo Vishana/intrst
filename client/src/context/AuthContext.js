@@ -59,13 +59,22 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await axios.post('/api/auth/register', userData);
+      // No splitting needed anymore
+      const payload = {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        password: userData.password,
+        acceptTerms: userData.acceptTerms // include if backend needs it
+      };
+
+      const response = await axios.post('/api/auth/register', payload);
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
-      
+
       toast.success('Registration successful!');
       return { success: true };
     } catch (error) {
