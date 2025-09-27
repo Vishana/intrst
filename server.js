@@ -8,6 +8,13 @@ const fs = require('fs');
 // Load environment variables
 dotenv.config();
 
+// Check for required environment variables
+if (!process.env.JWT_SECRET) {
+  console.error('❌ JWT_SECRET environment variable is required');
+  console.log('💡 Please set JWT_SECRET in your .env file');
+  process.exit(1);
+}
+
 // Initialize Express app
 const app = express();
 

@@ -228,32 +228,108 @@ router.post('/onboarding', auth, async (req, res) => {
       currentSavings, 
       debt,
       investmentExperience,
-      investmentTimeline
+      investmentTimeline,
+      notifications,
+      communicationMethod
     } = req.body;
     
-    // Validation - only check for essential fields
-    if (!age || !lifeStage || !primaryGoal || !riskTolerance || 
-        monthlyIncome === undefined || monthlyExpenses === undefined || 
-        currentSavings === undefined) {
+    // Validation - check for essential fields
+    if (!age || !lifeStage || !primaryGoal || !riskTolerance) {
       return res.status(400).json({
-        message: 'All onboarding fields are required'
+        message: 'Age, life stage, primary goal, and risk tolerance are required'
+      });
+    }
+    
+    // Validate numeric fields
+    if (monthlyIncome !== undefined && monthlyIncome < 0) {
+      return res.status(400).json({
+        message: 'Monthly income must be a positive number'
+      });
+    }
+    
+    if (monthlyExpenses !== undefined && monthlyExpenses < 0) {
+      return res.status(400).json({
+        message: 'Monthly expenses must be a positive number'
+      });
+    }
+    
+    if (currentSavings !== undefined && currentSavings < 0) {
+      return res.status(400).json({
+        message: 'Current savings must be a positive number'
+      });
+    }
+    
+    if (debt !== undefined && debt < 0) {
+      return res.status(400).json({
+        message: 'Debt must be a positive number'
       });
     }
     
     // Update user with onboarding data
     const user = await User.findById(req.user._id);
     
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found'
+      });
+    }
+    
     // Update onboarding information
     user.onboarding.lifeStage = lifeStage;
     user.onboarding.primaryGoals = [primaryGoal]; // Convert single goal to array
     user.onboarding.riskTolerance = riskTolerance;
+    user.onboarding.age = age;
     user.onboarding.isComplete = true;
     
-    // Update financial profile
-    user.financialProfile.monthlyIncome = monthlyIncome;
-    user.financialProfile.monthlyExpenses = monthlyExpenses;
-    user.financialProfile.currentSavings = currentSavings;
-    user.financialProfile.debt = debt || 0; // Default to 0 if not provided
+    // Update investment preferences if provided
+    if (investmentExperience) {
+      user.onboarding.investmentExperience = investmentExperience;
+    }
+    if (investmentTimeline) {
+      user.onboarding.investmentTimeline = investmentTimeline;
+    }
+    if (communicationMethod) {
+      user.onboarding.communicationMethod = communicationMethod;
+    }
+    
+    // Update financial profile (only if provided)
+    if (monthlyIncome !== undefined) {
+      user.financialProfile.monthlyIncome = Number(monthlyIncome);
+    }
+    if (monthlyExpenses !== undefined) {
+      user.financialProfile.monthlyExpenses = Number(monthlyExpenses);
+    }
+    if (currentSavings !== undefined) {
+      user.financialProfile.currentSavings = Number(currentSavings);
+    }
+    if (debt !== undefined) {
+      user.financialProfile.debt = Number(debt);
+    }
+    
+    // Update preferences if provided
+    if (notifications) {
+      if (notifications.goalReminders !== undefined) {
+        user.preferences.notifications.goals = notifications.goalReminders;
+      }
+      if (notifications.budgetAlerts !== undefined) {
+        user.preferences.notifications.email = notifications.budgetAlerts;
+      }
+      if (notifications.savingsTips !== undefined) {
+        user.preferences.notifications.advisor = notifications.savingsTips;
+      }
+      if (notifications.bettingUpdates !== undefined) {
+        user.preferences.notifications.bets = notifications.bettingUpdates;
+      }
+    }
+    
+    // Award onboarding completion points
+    user.gamification.points += 100;
+    user.gamification.achievements.push({
+      name: 'Getting Started',
+      description: 'Completed your financial profile setup',
+      earnedAt: new Date(),
+      icon: '🎯'
+    });
     
     await user.save();
     
@@ -267,14 +343,31 @@ router.post('/onboarding', auth, async (req, res) => {
         onboardingComplete: user.onboarding.isComplete,
         financialProfile: user.financialProfile,
         onboarding: user.onboarding,
-        gamification: user.gamification
+        gamification: user.gamification,
+        preferences: user.preferences
       }
     });
     
   } catch (error) {
     console.error('Onboarding error:', error);
+    
+    // More detailed error logging
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: 'Validation error',
+        details: Object.values(error.errors).map(err => err.message)
+      });
+    }
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        message: 'Invalid data format provided'
+      });
+    }
+    
     res.status(500).json({
-      message: 'Server error during onboarding'
+      message: 'Server error during onboarding',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });

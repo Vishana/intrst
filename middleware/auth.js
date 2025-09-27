@@ -5,7 +5,8 @@ const User = require('../models/User');
 const auth = async (req, res, next) => {
   try {
     // Get token from header
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const authHeader = req.header('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
     
     if (!token) {
       return res.status(401).json({ 
@@ -13,30 +14,73 @@ const auth = async (req, res, next) => {
       });
     }
     
+    // Check for JWT_SECRET
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not defined in environment variables');
+      return res.status(500).json({
+        message: 'Server configuration error'
+      });
+    }
+    
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (!decoded.userId) {
+      return res.status(401).json({ 
+        message: 'Invalid token structure' 
+      });
+    }
     
     // Get user from database
     const user = await User.findById(decoded.userId).select('-password');
     
     if (!user) {
       return res.status(401).json({ 
-        message: 'Token is not valid' 
+        message: 'User not found, token is invalid' 
       });
     }
     
     // Add user to request object
     req.user = user;
     
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    // Update last login (but don't wait for it to complete)
+    User.findByIdAndUpdate(user._id, { lastLogin: new Date() }).catch(err => {
+      console.error('Failed to update last login:', err);
+    });
     
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
+    
+    // Handle specific JWT errors
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        message: 'Token has expired, please log in again' 
+      });
+    }
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        message: 'Invalid token format' 
+      });
+    }
+    
+    if (error.name === 'NotBeforeError') {
+      return res.status(401).json({ 
+        message: 'Token not active yet' 
+      });
+    }
+    
+    // Database connection errors
+    if (error.name === 'MongoNetworkError' || error.name === 'MongooseError') {
+      return res.status(503).json({ 
+        message: 'Database connection error, please try again later' 
+      });
+    }
+    
     res.status(401).json({ 
-      message: 'Token is not valid' 
+      message: 'Authentication failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

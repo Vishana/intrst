@@ -12,7 +12,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Onboarding from './pages/auth/Onboarding';
 import SimpleDashboard from './pages/SimpleDashboard';
-// import Advisor from './pages/Advisor';
+import Advisor from './pages/Advisor';
 // import Betting from './pages/Betting';
 // import Profile from './pages/Profile';
 
@@ -93,10 +93,7 @@ function AppRoutes() {
           element={
             user ? (
               user.onboardingComplete ? (
-                <>
-                  <Navbar />
-                  <div>Advisor Coming Soon</div>
-                </>
+                <Advisor />
               ) : (
                 <Navigate to="/onboarding" replace />
               )

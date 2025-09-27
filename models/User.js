@@ -38,18 +38,39 @@ const userSchema = new mongoose.Schema({
       type: String,
       default: null
     },
+    age: {
+      type: String,
+      default: null
+    },
     income: {
       type: Number,
       default: null
     },
     primaryGoals: [{
       type: String,
-      enum: ['save_money', 'pay_debt', 'invest', 'buy_house', 'retirement', 'emergency_fund', 'other']
+      enum: ['save_money', 'pay_debt', 'invest', 'buy_house', 'retirement', 'emergency_fund', 'save-emergency', 'pay-debt', 'save-purchase', 'invest-retirement', 'invest-wealth', 'budget-control', 'other']
     }],
     riskTolerance: {
       type: String,
-      enum: ['low', 'medium', 'high'],
+      enum: ['low', 'medium', 'high', 'conservative', 'moderate', 'aggressive'],
       default: 'medium'
+    },
+    investmentExperience: {
+      type: String,
+      enum: ['beginner', 'some', 'experienced', 'expert'],
+      default: undefined,
+      required: false
+    },
+    investmentTimeline: {
+      type: String,
+      enum: ['short', 'medium', 'long', 'retirement'],
+      default: undefined,
+      required: false
+    },
+    communicationMethod: {
+      type: String,
+      enum: ['email', 'sms', 'push', 'minimal'],
+      default: 'email'
     },
     customGoals: [{
       description: String,

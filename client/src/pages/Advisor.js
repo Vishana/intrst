@@ -82,7 +82,8 @@ const Advisor = () => {
         timestamp: new Date(),
         insights: response.data.insights,
         suggestions: response.data.suggestions,
-        visualization: response.data.visualization
+        visualization: response.data.visualization,
+        followUpQuestions: response.data.followUpQuestions
       };
 
       setMessages(prev => [...prev, botMessage]);
@@ -103,7 +104,8 @@ const Advisor = () => {
         timestamp: new Date(),
         insights: mockResponse.insights,
         suggestions: mockResponse.suggestions,
-        visualization: mockResponse.visualization
+        visualization: mockResponse.visualization,
+        followUpQuestions: mockResponse.followUpQuestions
       };
 
       setMessages(prev => [...prev, botMessage]);
@@ -331,14 +333,42 @@ const MessageBubble = ({ message, onSuggestionClick }) => {
         </div>
         
         {message.suggestions && (
-          <div className="mt-2 space-y-1">
-            {message.suggestions.map((suggestion, index) => (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-medium mb-2 opacity-75">Recommended Actions:</p>
+            {message.suggestions.map((suggestion, index) => {
+              // Handle both string suggestions and object suggestions
+              const suggestionText = typeof suggestion === 'string' ? suggestion : suggestion.title || suggestion.description;
+              
+              // Extract the title (everything before the first colon) for click action
+              const suggestionClick = suggestionText.includes(':') 
+                ? suggestionText.split(':')[0].replace(/^\*\*|\*\*$/g, '').trim()
+                : suggestionText.replace(/^\*\*|\*\*$/g, '').trim();
+              
+              return (
+                <button
+                  key={index}
+                  onClick={() => onSuggestionClick(suggestionClick)}
+                  className="block w-full text-left px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  title="Click to ask about this recommendation"
+                >
+                  <div className="whitespace-pre-wrap">{suggestionText.replace(/^\*\*|\*\*$/g, '')}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        
+        {message.followUpQuestions && (
+          <div className="mt-3 space-y-1">
+            <p className="text-xs font-medium mb-2 opacity-75">Follow-up Questions:</p>
+            {message.followUpQuestions.map((question, index) => (
               <button
                 key={index}
-                onClick={() => onSuggestionClick(suggestion)}
-                className="block w-full text-left px-3 py-1 text-xs bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={() => onSuggestionClick(question)}
+                className="block w-full text-left px-3 py-1 text-xs bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-blue-800"
+                title="Click to ask this question"
               >
-                {suggestion}
+                {question}
               </button>
             ))}
           </div>
@@ -439,6 +469,10 @@ const generateMockResponse = (message, user) => {
         'Review subscription services',
         'Try meal prepping for weekends'
       ],
+      followUpQuestions: [
+        'What percentage of income should I save?',
+        'How can I reduce my dining expenses?'
+      ],
       visualization: {
         type: 'spending-breakdown',
         description: 'Monthly spending by category'
@@ -458,6 +492,10 @@ const generateMockResponse = (message, user) => {
         'Set up automatic weekly transfers of $125',
         'Open a high-yield savings account',
         'Review and optimize recurring subscriptions'
+      ],
+      followUpQuestions: [
+        'Which high-yield accounts do you recommend?',
+        'How much should my emergency fund be?'
       ]
     };
   }
@@ -473,6 +511,10 @@ const generateMockResponse = (message, user) => {
       'Review your monthly budget',
       'Analyze spending patterns',
       'Set up emergency fund goal'
+    ],
+    followUpQuestions: [
+      'What tools can help me track spending?',
+      'How do I set realistic financial goals?'
     ]
   };
 };
