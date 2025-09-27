@@ -223,6 +223,7 @@ router.post('/onboarding', auth, async (req, res) => {
       age, 
       lifeStage, 
       primaryGoal,
+      primaryGoals, // Support both formats
       riskTolerance,
       monthlyIncome, 
       monthlyExpenses, 
@@ -230,14 +231,18 @@ router.post('/onboarding', auth, async (req, res) => {
       debt,
       investmentExperience,
       investmentTimeline,
+      timeHorizon,
       notifications,
       communicationMethod
     } = req.body;
     
+    // Handle both primaryGoal (single) and primaryGoals (array)
+    const finalPrimaryGoals = primaryGoals || (primaryGoal ? [primaryGoal] : []);
+    
     // Validation - check for essential fields
-    if (!age || !lifeStage || !primaryGoal || !riskTolerance) {
+    if (!age || !lifeStage || !riskTolerance || finalPrimaryGoals.length === 0) {
       return res.status(400).json({
-        message: 'Age, life stage, primary goal, and risk tolerance are required'
+        message: 'Age, life stage, primary goals, and risk tolerance are required'
       });
     }
     
@@ -277,10 +282,11 @@ router.post('/onboarding', auth, async (req, res) => {
     
     // Update onboarding information
     user.onboarding.lifeStage = lifeStage;
-    user.onboarding.primaryGoals = [primaryGoal]; // Convert single goal to array
+    user.onboarding.primaryGoals = finalPrimaryGoals;
     user.onboarding.riskTolerance = riskTolerance;
     user.onboarding.age = age;
     user.onboarding.isComplete = true;
+    user.onboarding.completedAt = new Date();
     
     // Update investment preferences if provided
     if (investmentExperience) {
@@ -288,6 +294,9 @@ router.post('/onboarding', auth, async (req, res) => {
     }
     if (investmentTimeline) {
       user.onboarding.investmentTimeline = investmentTimeline;
+    }
+    if (timeHorizon) {
+      user.onboarding.timeHorizon = timeHorizon;
     }
     if (communicationMethod) {
       user.onboarding.communicationMethod = communicationMethod;

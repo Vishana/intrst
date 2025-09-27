@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Integrations Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Financial Integrations Demo</h1>
+        
+        <!-- Auth Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Authentication</h2>
+            <div id="auth-section">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="font-medium mb-2">Login</h3>
+                        <input type="email" id="login-email" placeholder="Email" class="w-full p-2 border rounded mb-2" value="test-integration@example.com">
+                        <input type="password" id="login-password" placeholder="Password" class="w-full p-2 border rounded mb-2" value="testpass123">
+                        <button onclick="login()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Login</button>
+                    </div>
+                    <div>
+                        <h3 class="font-medium mb-2">User Info</h3>
+                        <div id="user-info" class="text-sm text-gray-600">
+                            Not logged in
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Integrations Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Financial Integrations</h2>
+            
+            <!-- File Upload -->
+            <div class="mb-4">
+                <h3 class="font-medium mb-2">Upload Sample CSV</h3>
+                <div class="flex items-center gap-4">
+                    <select id="provider-select" class="p-2 border rounded">
+                        <option value="fidelity">Fidelity</option>
+                        <option value="vanguard">Vanguard</option>
+                        <option value="paypal">PayPal</option>
+                        <option value="robinhood">Robinhood</option>
+                    </select>
+                    <input type="file" id="csv-file" accept=".csv" class="p-2 border rounded">
+                    <button onclick="uploadCSV()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Upload</button>
+                    <button onclick="downloadSample()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">Download Sample</button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="upload-result" class="hidden mt-4 p-3 rounded"></div>
+        </div>
+
+        <!-- User Financial Data -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Your Financial Data</h2>
+            <button onclick="loadUserData()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 mb-4">Load Data</button>
+            
+            <div id="user-data" class="hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div class="text-lg font-semibold text-green-800">Net Worth</div>
+                        <div id="net-worth" class="text-2xl font-bold text-green-900">$0</div>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="text-lg font-semibold text-blue-800">Investments</div>
+                        <div id="investments" class="text-2xl font-bold text-blue-900">$0</div>
+                    </div>
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div class="text-lg font-semibold text-purple-800">Monthly Spending</div>
+                        <div id="spending" class="text-2xl font-bold text-purple-900">$0</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="font-semibold mb-2">Connected Integrations</h3>
+                        <div id="connected-list" class="text-sm text-gray-600"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Spending by Category</h3>
+                        <div id="spending-categories" class="text-sm"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Advisor Test -->
+        <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <h2 class="text-xl font-semibold mb-4">AI Advisor with Integration Data</h2>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="advisor-query" placeholder="Ask about your finances..." class="flex-1 p-2 border rounded" value="Analyze my spending patterns">
+                <button onclick="askAdvisor()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Ask AI</button>
+            </div>
+            <div id="advisor-response" class="hidden mt-4 p-4 bg-gray-50 rounded"></div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        const API_BASE = 'http://localhost:3001/api';
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (data.token) {
+                    authToken = data.token;
+                    document.getElementById('user-info').innerHTML = `
+                        <div class="text-green-600">✅ Logged in as ${data.user.firstName} ${data.user.lastName}</div>
+                        <div class="text-xs text-gray-500 mt-1">Token: ${authToken.substring(0, 20)}...</div>
+                    `;
+                } else {
+                    document.getElementById('user-info').innerHTML = `<div class="text-red-600">❌ Login failed: ${data.message}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('user-info').innerHTML = `<div class="text-red-600">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function downloadSample() {
+            const provider = document.getElementById('provider-select').value;
+            const typeMap = {
+                'fidelity': 'retirement',
+                'vanguard': 'investment',
+                'paypal': 'spending',
+                'robinhood': 'trading'
+            };
+
+            const type = typeMap[provider];
+            const link = document.createElement('a');
+            link.href = `\${API_BASE}/integrations/sample-csv/\${type}\`;
+            link.download = \`\${provider}_sample.csv\`;
+            link.click();
+        }
+
+        async function uploadCSV() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+
+            const provider = document.getElementById('provider-select').value;
+            const fileInput = document.getElementById('csv-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a CSV file');
+                return;
+            }
+
+            const typeMap = {
+                'fidelity': 'retirement',
+                'vanguard': 'investment',
+                'paypal': 'spending',
+                'robinhood': 'trading'
+            };
+
+            const formData = new FormData();
+            formData.append('csvFile', file);
+
+            const resultDiv = document.getElementById('upload-result');
+            resultDiv.className = 'mt-4 p-3 rounded bg-blue-50 border border-blue-200';
+            resultDiv.innerHTML = '⏳ Uploading and processing...';
+            resultDiv.classList.remove('hidden');
+
+            try {
+                const response = await fetch(\`\${API_BASE}/integrations/upload/\${provider}/\${typeMap[provider]}\`, {
+                    method: 'POST',
+                    headers: { 'Authorization': \`Bearer \${authToken}\` },
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    resultDiv.className = 'mt-4 p-3 rounded bg-green-50 border border-green-200';
+                    resultDiv.innerHTML = \`
+                        <div class="text-green-800 font-semibold">✅ Upload Successful!</div>
+                        <div class="text-sm text-green-600 mt-1">
+                            Provider: \${data.provider}<br>
+                            Type: \${data.type}<br>
+                            Records Processed: \${data.recordsProcessed}<br>
+                            Net Worth: $\${data.insights?.totalNetWorth?.toLocaleString() || 0}
+                        </div>
+                    \`;
+                } else {
+                    resultDiv.className = 'mt-4 p-3 rounded bg-red-50 border border-red-200';
+                    resultDiv.innerHTML = \`<div class="text-red-800">❌ Upload failed: \${data.message}</div>\`;
+                }
+            } catch (error) {
+                resultDiv.className = 'mt-4 p-3 rounded bg-red-50 border border-red-200';
+                resultDiv.innerHTML = \`<div class="text-red-800">❌ Error: \${error.message}</div>\`;
+            }
+        }
+
+        async function loadUserData() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+
+            try {
+                const response = await fetch(\`\${API_BASE}/integrations/user-data\`, {
+                    headers: { 'Authorization': \`Bearer \${authToken}\` }
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('net-worth').textContent = \`$\${data.insights?.totalNetWorth?.toLocaleString() || 0}\`;
+                    document.getElementById('investments').textContent = \`$\${data.insights?.totalInvestments?.toLocaleString() || 0}\`;
+                    document.getElementById('spending').textContent = \`$\${data.insights?.monthlySpending?.toLocaleString() || 0}\`;
+
+                    const connectedList = document.getElementById('connected-list');
+                    if (data.connected?.length > 0) {
+                        connectedList.innerHTML = data.connected.map(conn => 
+                            \`<div class="flex items-center gap-2 py-1">
+                                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                \${conn.provider} (\${conn.type})
+                            </div>\`
+                        ).join('');
+                    } else {
+                        connectedList.innerHTML = '<div class="text-gray-500">No integrations connected</div>';
+                    }
+
+                    const categories = document.getElementById('spending-categories');
+                    if (data.insights?.spendingByCategory?.length > 0) {
+                        categories.innerHTML = data.insights.spendingByCategory.map(cat =>
+                            \`<div class="flex justify-between py-1">
+                                <span>\${cat.category}</span>
+                                <span class="font-medium">$\${cat.amount?.toLocaleString()} (\${cat.percentage?.toFixed(1)}%)</span>
+                            </div>\`
+                        ).join('');
+                    } else {
+                        categories.innerHTML = '<div class="text-gray-500">No spending data available</div>';
+                    }
+
+                    document.getElementById('user-data').classList.remove('hidden');
+                }
+            } catch (error) {
+                alert(\`Error loading user data: \${error.message}\`);
+            }
+        }
+
+        async function askAdvisor() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+
+            const query = document.getElementById('advisor-query').value;
+            const responseDiv = document.getElementById('advisor-response');
+            
+            responseDiv.className = 'mt-4 p-4 bg-blue-50 rounded border border-blue-200';
+            responseDiv.innerHTML = '⏳ AI is analyzing your data...';
+            responseDiv.classList.remove('hidden');
+
+            try {
+                const response = await fetch(\`\${API_BASE}/advisor/chat\`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': \`Bearer \${authToken}\` 
+                    },
+                    body: JSON.stringify({ message: query })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    responseDiv.className = 'mt-4 p-4 bg-green-50 rounded border border-green-200';
+                    responseDiv.innerHTML = \`
+                        <div class="text-green-800 font-semibold mb-2">🤖 AI Advisor Response:</div>
+                        <div class="text-gray-800 mb-3">\${data.response}</div>
+                        \${data.insights?.length > 0 ? \`
+                            <div class="text-sm">
+                                <div class="font-medium text-gray-700 mb-1">💡 Insights:</div>
+                                <ul class="list-disc list-inside text-gray-600 space-y-1">
+                                    \${data.insights.map(insight => \`<li>\${insight}</li>\`).join('')}
+                                </ul>
+                            </div>
+                        \` : ''}
+                        \${data.suggestions?.length > 0 ? \`
+                            <div class="text-sm mt-3">
+                                <div class="font-medium text-gray-700 mb-1">🎯 Suggestions:</div>
+                                <ul class="list-disc list-inside text-gray-600 space-y-1">
+                                    \${data.suggestions.map(suggestion => \`<li>\${suggestion}</li>\`).join('')}
+                                </ul>
+                            </div>
+                        \` : ''}
+                    \`;
+                } else {
+                    responseDiv.className = 'mt-4 p-4 bg-red-50 rounded border border-red-200';
+                    responseDiv.innerHTML = \`<div class="text-red-800">❌ AI request failed: \${data.message}</div>\`;
+                }
+            } catch (error) {
+                responseDiv.className = 'mt-4 p-4 bg-red-50 rounded border border-red-200';
+                responseDiv.innerHTML = \`<div class="text-red-800">❌ Error: \${error.message}</div>\`;
+            }
+        }
+    </script>
+</body>
+</html>

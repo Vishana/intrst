@@ -52,6 +52,7 @@ app.use('/api/bets', require('./routes/bets'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/advisor', require('./routes/advisor'));
 app.use('/api/integrations', require('./routes/integrations'));
+app.use('/api/debug', require('./routes/debug'));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
@@ -76,6 +77,11 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Serve debug page
+app.get('/debug', (req, res) => {
+  res.sendFile(path.join(__dirname, 'debug_page.html'));
 });
 
 // 404 handler for API routes

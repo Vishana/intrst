@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Debug View</title>
+    <style>
+        body { font-family: monospace; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .auth-section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .debug-output { background: #1e1e1e; color: #00ff00; padding: 20px; border-radius: 8px; white-space: pre-wrap; font-size: 12px; max-height: 600px; overflow-y: auto; }
+        .button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .button:hover { background: #0056b3; }
+        .input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin: 5px; width: 200px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Database Debug View</h1>
+        
+        <!-- Authentication Section -->
+        <div class="auth-section">
+            <h2>Authentication</h2>
+            <input type="email" id="email" placeholder="Email" class="input" value="integration-test@example.com">
+            <input type="password" id="password" placeholder="Password" class="input" value="testpass123">
+            <button onclick="login()" class="button">Login</button>
+            <button onclick="register()" class="button">Register New User</button>
+            <div id="auth-status"></div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="auth-section">
+            <h2>Quick Actions</h2>
+            <button onclick="completeOnboarding()" class="button">Complete Onboarding</button>
+            <button onclick="uploadSampleData()" class="button">Upload Sample Integration Data</button>
+            <button onclick="viewUserData()" class="button">View User Data (JSON)</button>
+            <button onclick="viewDebugData()" class="button">View Full Debug Report</button>
+            <div id="action-status"></div>
+        </div>
+
+        <!-- Debug Output -->
+        <div class="auth-section">
+            <h2>Debug Output</h2>
+            <div id="debug-output" class="debug-output">
+                Click "View Full Debug Report" above to see all your database data...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        const API_BASE = 'http://localhost:3001/api';
+
+        function showStatus(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${isError ? 'error' : 'success'}">${message}</div>`;
+            setTimeout(() => element.innerHTML = '', 5000);
+        }
+
+        async function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        firstName: 'Debug',
+                        lastName: 'User',
+                        email,
+                        password
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showStatus('auth-status', '✅ User registered successfully! Now login.');
+                } else {
+                    showStatus('auth-status', `❌ Registration failed: ${data.message}`, true);
+                }
+            } catch (error) {
+                showStatus('auth-status', `❌ Error: ${error.message}`, true);
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    authToken = data.token;
+                    showStatus('auth-status', `✅ Logged in as ${data.user.firstName} ${data.user.lastName}`);
+                } else {
+                    showStatus('auth-status', `❌ Login failed: ${data.message}`, true);
+                }
+            } catch (error) {
+                showStatus('auth-status', `❌ Error: ${error.message}`, true);
+            }
+        }
+
+        async function completeOnboarding() {
+            if (!authToken) {
+                showStatus('action-status', '❌ Please login first', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/onboarding`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        age: 30,
+                        lifeStage: 'early-career',
+                        riskTolerance: 'moderate',
+                        primaryGoals: ['retirement', 'investment', 'emergency-fund'],
+                        timeHorizon: '10+ years',
+                        monthlyIncome: 6000,
+                        monthlyExpenses: 4000,
+                        currentSavings: 20000,
+                        debt: 5000
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showStatus('action-status', '✅ Onboarding completed successfully!');
+                } else {
+                    showStatus('action-status', `❌ Onboarding failed: ${data.message}`, true);
+                }
+            } catch (error) {
+                showStatus('action-status', `❌ Error: ${error.message}`, true);
+            }
+        }
+
+        async function uploadSampleData() {
+            if (!authToken) {
+                showStatus('action-status', '❌ Please login first', true);
+                return;
+            }
+
+            // Create sample CSV data
+            const csvData = "Date,Description,Category,Amount,Type,Status,Merchant\\n" +
+                "2024-12-01,Grocery Shopping,Food & Dining,-125.50,Payment,Completed,Whole Foods\\n" +
+                "2024-12-02,Salary Deposit,Income,2500.00,Deposit,Completed,ABC Company\\n" +
+                "2024-12-03,Gas Station,Transportation,-45.75,Payment,Completed,Shell\\n" +
+                "2024-12-04,Netflix Subscription,Entertainment,-15.99,Payment,Completed,Netflix\\n" +
+                "2024-12-05,Investment Purchase,Investment,-500.00,Payment,Completed,Vanguard";
+
+            try {
+                // Create a blob and form data
+                const blob = new Blob([csvData], { type: 'text/csv' });
+                const formData = new FormData();
+                formData.append('csvFile', blob, 'sample_spending.csv');
+
+                const response = await fetch(API_BASE + "/integrations/upload/paypal/spending", {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showStatus('action-status', '✅ Sample data uploaded! Processed ' + data.recordsProcessed + ' records.');
+                } else {
+                    showStatus('action-status', '❌ Upload failed: ' + data.message, true);
+                }
+            } catch (error) {
+                showStatus('action-status', '❌ Error: ' + error.message, true);
+            }
+        }
+
+        async function viewUserData() {
+            if (!authToken) {
+                showStatus('action-status', '❌ Please login first', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE + "/debug/user-data-json", {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('debug-output').textContent = JSON.stringify(data, null, 2);
+                    showStatus('action-status', '✅ User data loaded (JSON format)');
+                } else {
+                    showStatus('action-status', '❌ Failed to load data: ' + data.message, true);
+                }
+            } catch (error) {
+                showStatus('action-status', '❌ Error: ' + error.message, true);
+            }
+        }
+
+        async function viewDebugData() {
+            if (!authToken) {
+                showStatus('action-status', '❌ Please login first', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE + "/debug/user-data", {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+
+                if (response.ok) {
+                    const text = await response.text();
+                    document.getElementById('debug-output').textContent = text;
+                    showStatus('action-status', '✅ Full debug report loaded');
+                } else {
+                    const data = await response.json();
+                    showStatus('action-status', '❌ Failed to load debug data: ' + data.message, true);
+                }
+            } catch (error) {
+                showStatus('action-status', '❌ Error: ' + error.message, true);
+            }
+        }
+    </script>
+</body>
+</html>

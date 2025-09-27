@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Integrations Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Financial Integrations Demo</h1>
+        
+        <!-- Status -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">System Status</h2>
+            <div id="status" class="text-sm">
+                <div id="backend-status" class="mb-2">Backend: <span class="text-yellow-600">Checking...</span></div>
+                <div id="auth-status" class="mb-2">Auth: <span class="text-gray-500">Not logged in</span></div>
+                <div id="integration-status">Integrations: <span class="text-gray-500">Not tested</span></div>
+            </div>
+        </div>
+
+        <!-- Quick Test -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Integration System Test</h2>
+            <p class="text-gray-600 mb-4">This demonstrates the complete financial integration system we built:</p>
+            
+            <div class="space-y-3">
+                <button onclick="testBackend()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">1. Test Backend</button>
+                <button onclick="testAuth()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">2. Test Authentication</button>
+                <button onclick="testIntegration()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">3. Test CSV Upload</button>
+                <button onclick="testAI()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">4. Test AI with Data</button>
+            </div>
+
+            <div id="test-results" class="mt-6 p-4 bg-gray-50 rounded hidden">
+                <!-- Results will appear here -->
+            </div>
+        </div>
+
+        <!-- Features Overview -->
+        <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <h2 class="text-xl font-semibold mb-4">What We Built</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-semibold text-green-700 mb-2">✅ Integration System</h3>
+                    <ul class="text-sm space-y-1 text-gray-600">
+                        <li>• CSV parsing for 7 financial institution types</li>
+                        <li>• User profile data storage with schema validation</li>
+                        <li>• Automatic insights calculation (net worth, spending, etc.)</li>
+                        <li>• Real-time data processing and storage</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-green-700 mb-2">✅ AI Advisor Enhancement</h3>
+                    <ul class="text-sm space-y-1 text-gray-600">
+                        <li>• AI now uses real financial data from integrations</li>
+                        <li>• Personalized advice based on actual spending patterns</li>
+                        <li>• Investment allocation analysis</li>
+                        <li>• Context-aware recommendations</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Supported Integrations -->
+        <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <h2 class="text-xl font-semibold mb-4">Supported Financial Integrations</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center p-3 border rounded">
+                    <div class="font-medium text-green-600">Fidelity</div>
+                    <div class="text-xs text-gray-500">Retirement & 401k</div>
+                </div>
+                <div class="text-center p-3 border rounded">
+                    <div class="font-medium text-red-600">Vanguard</div>
+                    <div class="text-xs text-gray-500">Investments</div>
+                </div>
+                <div class="text-center p-3 border rounded">
+                    <div class="font-medium text-blue-600">PayPal</div>
+                    <div class="text-xs text-gray-500">Spending & Payments</div>
+                </div>
+                <div class="text-center p-3 border rounded">
+                    <div class="font-medium text-green-400">Robinhood</div>
+                    <div class="text-xs text-gray-500">Stock Trading</div>
+                </div>
+                <div class="text-center p-3 border rounded">
+                    <div class="font-medium text-blue-500">Schwab</div>
+                    <div class="text-xs text-gray-500">Brokerage</div>
+                </div>
+                <div class="text-center p-3 border rounded">
+                    <div class="font-medium text-green-600">Mint</div>
+                    <div class="text-xs text-gray-500">Budgeting</div>
+                </div>
+                <div class="text-center p-3 border rounded">
+                    <div class="font-medium text-orange-500">Personal Capital</div>
+                    <div class="text-xs text-gray-500">Wealth Tracking</div>
+                </div>
+                <div class="text-center p-3 border rounded">
+                    <div class="font-medium text-blue-400">Venmo</div>
+                    <div class="text-xs text-gray-500">P2P Payments</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        const API_BASE = 'http://localhost:3001/api';
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            results.classList.remove('hidden');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-gray-600';
+            results.innerHTML += `<div class="text-xs ${colorClass}">[${timestamp}] ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        async function testBackend() {
+            log('Testing backend connection...');
+            try {
+                const response = await fetch(API_BASE + '/health');
+                const data = await response.json();
+                document.getElementById('backend-status').innerHTML = 'Backend: <span class="text-green-600">✅ Running</span>';
+                log('✅ Backend is running: ' + data.message, 'success');
+            } catch (error) {
+                document.getElementById('backend-status').innerHTML = 'Backend: <span class="text-red-600">❌ Down</span>';
+                log('❌ Backend connection failed: ' + error.message, 'error');
+            }
+        }
+
+        async function testAuth() {
+            log('Testing user authentication...');
+            try {
+                // Try to login with test user
+                const response = await fetch(API_BASE + '/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email: 'test-integration@example.com', 
+                        password: 'testpass123' 
+                    })
+                });
+
+                const data = await response.json();
+                if (data.token) {
+                    authToken = data.token;
+                    document.getElementById('auth-status').innerHTML = 'Auth: <span class="text-green-600">✅ Logged in</span>';
+                    log('✅ Authentication successful: ' + data.user.firstName + ' ' + data.user.lastName, 'success');
+                } else {
+                    document.getElementById('auth-status').innerHTML = 'Auth: <span class="text-red-600">❌ Failed</span>';
+                    log('❌ Authentication failed: ' + data.message, 'error');
+                }
+            } catch (error) {
+                document.getElementById('auth-status').innerHTML = 'Auth: <span class="text-red-600">❌ Error</span>';
+                log('❌ Auth error: ' + error.message, 'error');
+            }
+        }
+
+        async function testIntegration() {
+            if (!authToken) {
+                log('❌ Please test authentication first', 'error');
+                return;
+            }
+
+            log('Testing integration data retrieval...');
+            try {
+                const response = await fetch(API_BASE + '/integrations/user-data', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('integration-status').innerHTML = 'Integrations: <span class="text-green-600">✅ Working</span>';
+                    log('✅ Integration system working', 'success');
+                    log('   Connected accounts: ' + data.connected.length);
+                    log('   Net worth: $' + (data.insights?.totalNetWorth || 0).toLocaleString());
+                    log('   Monthly spending: $' + (data.insights?.monthlySpending || 0).toLocaleString());
+                } else {
+                    document.getElementById('integration-status').innerHTML = 'Integrations: <span class="text-red-600">❌ Failed</span>';
+                    log('❌ Integration test failed: ' + data.message, 'error');
+                }
+            } catch (error) {
+                document.getElementById('integration-status').innerHTML = 'Integrations: <span class="text-red-600">❌ Error</span>';
+                log('❌ Integration error: ' + error.message, 'error');
+            }
+        }
+
+        async function testAI() {
+            if (!authToken) {
+                log('❌ Please test authentication first', 'error');
+                return;
+            }
+
+            log('Testing AI advisor with integration data...');
+            try {
+                const response = await fetch(API_BASE + '/advisor/chat', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken 
+                    },
+                    body: JSON.stringify({ 
+                        message: 'What can you tell me about my financial situation based on my connected accounts?' 
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    log('✅ AI advisor responded successfully', 'success');
+                    log('🤖 AI Response: ' + data.response.substring(0, 100) + '...');
+                    if (data.insights?.length > 0) {
+                        log('💡 Key insights: ' + data.insights.length + ' provided');
+                    }
+                    if (data.suggestions?.length > 0) {
+                        log('🎯 Suggestions: ' + data.suggestions.length + ' provided');
+                    }
+                } else {
+                    log('❌ AI advisor failed: ' + data.message, 'error');
+                }
+            } catch (error) {
+                log('❌ AI advisor error: ' + error.message, 'error');
+            }
+        }
+
+        // Auto-test on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                log('🚀 Starting automatic system test...');
+                testBackend();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
