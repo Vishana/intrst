@@ -1,0 +1,11 @@
+Date,Description,Category,Amount,Type,Status,Merchant
+2025-09-27,Coffee Shop Purchase,Food & Dining,-$5.75,Payment,Completed,Starbucks
+2025-09-26,Uber Ride,Transportation,-$12.50,Payment,Completed,Uber Technologies
+2025-09-25,Amazon Purchase,Shopping,-$89.99,Payment,Completed,Amazon.com
+2025-09-24,Netflix Subscription,Entertainment,-$15.99,Recurring Payment,Completed,Netflix
+2025-09-23,Friend Payment,Personal,+$25.00,Received,Completed,John Smith
+2025-09-22,Gas Station,Transportation,-$45.67,Payment,Completed,Shell
+2025-09-21,Grocery Store,Food & Dining,-$127.34,Payment,Completed,Whole Foods
+2025-09-20,Online Purchase,Shopping,-$67.89,Payment,Completed,Target.com
+2025-09-19,Salary Direct Deposit,Income,+$3500.00,Direct Deposit,Completed,Employer Inc
+2025-09-18,Gym Membership,Health & Fitness,-$39.99,Recurring Payment,Completed,Planet Fitness

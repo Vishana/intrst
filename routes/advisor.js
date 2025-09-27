@@ -3,6 +3,7 @@ const { auth, requireOnboarding, rateLimitRequests } = require('../middleware/au
 const aiAdvisor = require('../services/aiAdvisor');
 const Transaction = require('../models/Transaction');
 const Goal = require('../models/Goal');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -27,6 +28,9 @@ router.post('/chat', auth, requireOnboarding, rateLimitRequests(20, 15 * 60 * 10
     // If context is minimal, get user's recent transactions and goals
     if (Object.keys(context).length === 0) {
       try {
+        // Get full user data with integrations
+        const fullUser = await User.findById(req.user._id);
+        
         const recentTransactions = await Transaction.find({ userId: req.user._id })
           .sort({ date: -1 })
           .limit(20)
@@ -35,9 +39,14 @@ router.post('/chat', auth, requireOnboarding, rateLimitRequests(20, 15 * 60 * 10
         const userGoals = await Goal.find({ userId: req.user._id })
           .select('title targetAmount currentAmount targetDate priority status');
           
+        // Include integration data and insights
         financialData = {
           recentTransactions,
-          currentGoals: userGoals
+          currentGoals: userGoals,
+          integrationData: fullUser.integrations?.data || {},
+          financialInsights: fullUser.integrations?.insights || {},
+          financialSummary: fullUser.getFinancialSummary ? fullUser.getFinancialSummary() : {},
+          connectedIntegrations: fullUser.integrations?.connected || []
         };
       } catch (dbError) {
         console.warn('Could not fetch additional context:', dbError.message);

@@ -1,0 +1,9 @@
+Date,Action,Symbol,Description,Quantity,Price,Amount,Account
+2025-09-25,Buy,AAPL,Apple Inc,10,$175.23,-$1752.30,Individual
+2025-09-24,Sell,TSLA,Tesla Inc,5,$245.67,+$1228.35,Individual
+2025-09-23,Dividend,MSFT,Microsoft Corp,25,$2.34,+$58.50,Individual
+2025-09-22,Buy,VOO,Vanguard S&P 500 ETF,15,$456.78,-$6851.70,IRA
+2025-09-21,Buy,QQQ,Invesco QQQ ETF,8,$389.45,-$3115.60,Individual
+2025-09-20,Sell,AMZN,Amazon.com Inc,3,$145.67,+$437.01,Individual
+2025-09-19,Buy,GOOGL,Alphabet Inc,5,$134.56,-$672.80,IRA
+2025-09-18,Dividend,VTI,Vanguard Total Stock Market ETF,50,$1.23,+$61.50,IRA

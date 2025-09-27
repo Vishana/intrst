@@ -157,21 +157,17 @@ const betSchema = new mongoose.Schema({
   // Completion Details
   completionDetails: {
     completedAt: {
-      type: Date,
-      default: null
+      type: Date
     },
     finalValue: {
-      type: Number,
-      default: null
+      type: Number
     },
     successPercentage: {
-      type: Number,
-      default: null
+      type: Number
     },
     outcome: {
       type: String,
-      enum: ['success', 'failure', 'partial'],
-      default: null
+      enum: ['success', 'failure', 'partial']
     },
     adminNotes: {
       type: String,

@@ -26,6 +26,7 @@ export const AuthProvider = ({ children }) => {
           
           // Verify token and get user data
           const response = await axios.get('/api/auth/me');
+          console.log('Auth initialization - user data:', response.data.user);
           setUser(response.data.user);
         } catch (error) {
           console.error('Token verification failed:', error);
@@ -87,6 +88,7 @@ export const AuthProvider = ({ children }) => {
   const completeOnboarding = async (onboardingData) => {
     try {
       const response = await axios.post('/api/auth/onboarding', onboardingData);
+      console.log('Onboarding completion - user data:', response.data.user);
       setUser(response.data.user);
       
       toast.success('Welcome to Intrst!');

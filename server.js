@@ -51,9 +51,13 @@ app.use('/api/goals', require('./routes/goals'));
 app.use('/api/bets', require('./routes/bets'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/advisor', require('./routes/advisor'));
+app.use('/api/integrations', require('./routes/integrations'));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
+
+// Serve static files from public directory
+app.use('/public', express.static('public'));
 
 // Serve static files from React app in production
 if (process.env.NODE_ENV === 'production') {

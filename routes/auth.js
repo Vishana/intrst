@@ -147,6 +147,7 @@ router.get('/me', auth, async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        onboardingComplete: user.onboarding.isComplete,
         onboarding: user.onboarding,
         financialProfile: user.financialProfile,
         preferences: user.preferences,

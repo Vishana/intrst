@@ -1,0 +1,10 @@
+Account Type,Institution,Account Name,Balance,Change (1M),Change (3M),Asset Class,Allocation %
+Investment,Fidelity,401k Account,$125430.50,+$5234.67,+$12450.23,Mixed,35.2%
+Investment,Vanguard,Roth IRA,$45670.25,+$2103.45,+$5678.90,Stocks,12.8%
+Cash,Chase Bank,Checking Account,$8450.75,+$1234.56,+$2567.89,Cash,2.4%
+Cash,Ally Bank,Savings Account,$25600.00,+$456.78,+$1234.56,Cash,7.2%
+Investment,E*TRADE,Brokerage Account,$67890.33,+$3456.78,+$8901.23,Mixed,19.1%
+Investment,Schwab,IRA Rollover,$34560.45,+$1678.90,+$4567.12,Conservative,9.7%
+Real Estate,Property,Primary Residence,$450000.00,+$2345.67,+$15678.90,Real Estate,12.6%
+Cash,Capital One,High Yield Savings,$15670.25,+$123.45,+$567.89,Cash,0.4%
+Investment,Betterment,Robo Advisor,$23450.60,+$1234.56,+$3456.78,Mixed,6.6%

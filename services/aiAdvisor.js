@@ -77,19 +77,28 @@ class AIFinancialAdvisor {
         - Debt: {debt}
         - Net Worth: {netWorth}
         
-        ADDITIONAL CONTEXT:
+        INTEGRATION DATA (Real Financial Accounts):
+        - Connected Accounts: {connectedAccounts}
+        - Total Net Worth from Integrations: {integrationNetWorth}
+        - Total Investments: {totalInvestments}
+        - Monthly Spending from Data: {actualMonthlySpending}
+        - Spending by Category: {spendingByCategory}
+        - Investment Allocation: {investmentAllocation}
+        
+        RECENT ACTIVITY:
         {additionalContext}
         
         USER QUESTION: {userQuery}
         
         Please provide:
-        1. A clear, personalized response to their question
-        2. 3-5 specific, actionable insights
-        3. 3-4 concrete suggestions they can implement
-        4. If relevant, a brief visualization recommendation
+        1. A clear, personalized response to their question using REAL data from their connected accounts
+        2. 3-5 specific, actionable insights based on their actual financial data
+        3. 3-4 concrete suggestions they can implement immediately
+        4. If relevant, a brief visualization recommendation using their real data
         
+        When you have real integration data, prioritize that over the basic profile data.
+        Use their actual spending patterns, investment allocations, and account balances in your advice.
         Keep your response practical, encouraging, and tailored to their specific situation.
-        Use their actual numbers when making recommendations.
         
         Format your response as JSON with the following structure:
         {{
@@ -124,7 +133,18 @@ class AIFinancialAdvisor {
         debt: userProfile.financialProfile?.debt || 0,
         netWorth: userProfile.calculateNetWorth?.() || 
                  (userProfile.financialProfile?.currentSavings || 0) - (userProfile.financialProfile?.debt || 0),
-        additionalContext: JSON.stringify(financialData),
+        // Integration data
+        connectedAccounts: financialData.connectedIntegrations?.map(conn => `${conn.provider} (${conn.type})`).join(', ') || 'None connected',
+        integrationNetWorth: financialData.financialSummary?.netWorth || financialData.financialInsights?.totalNetWorth || 0,
+        totalInvestments: financialData.financialSummary?.totalInvestments || financialData.financialInsights?.totalInvestments || 0,
+        actualMonthlySpending: financialData.financialSummary?.monthlySpending || financialData.financialInsights?.monthlySpending || 0,
+        spendingByCategory: JSON.stringify(financialData.financialInsights?.spendingByCategory || []),
+        investmentAllocation: JSON.stringify(financialData.financialInsights?.investmentAllocation || []),
+        additionalContext: JSON.stringify({
+          recentTransactions: financialData.recentTransactions?.slice(0, 5) || [],
+          currentGoals: financialData.currentGoals || [],
+          hasIntegrationData: !!(financialData.integrationData && Object.keys(financialData.integrationData).length > 0)
+        }),
         userQuery: userQuery
       });
       

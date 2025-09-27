@@ -1,0 +1,11 @@
+Category,Budgeted Amount,Spent Amount,Remaining,Percentage Used,Goal,Status
+Food & Dining,$600.00,$487.23,$112.77,81.2%,Stay Under Budget,On Track
+Transportation,$300.00,$245.67,$54.33,81.9%,Stay Under Budget,On Track
+Shopping,$400.00,$523.45,-$123.45,130.9%,Stay Under Budget,Over Budget
+Entertainment,$200.00,$156.78,$43.22,78.4%,Stay Under Budget,On Track
+Utilities,$250.00,$234.56,$15.44,93.8%,Stay Under Budget,Warning
+Health & Fitness,$150.00,$89.99,$60.01,60.0%,Stay Under Budget,On Track
+Personal Care,$100.00,$67.45,$32.55,67.5%,Stay Under Budget,On Track
+Education,$300.00,$0.00,$300.00,0.0%,Stay Under Budget,Excellent
+Travel,$500.00,$234.56,$265.44,46.9%,Stay Under Budget,On Track
+Insurance,$350.00,$350.00,$0.00,100.0%,Fixed Expense,On Track

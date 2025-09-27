@@ -13,7 +13,7 @@ import Register from './pages/auth/Register';
 import Onboarding from './pages/auth/Onboarding';
 import SimpleDashboard from './pages/SimpleDashboard';
 import Advisor from './pages/Advisor';
-// import Betting from './pages/Betting';
+import BettingSimple from './pages/BettingSimple';
 // import Profile from './pages/Profile';
 
 function App() {
@@ -40,6 +40,11 @@ function AppRoutes() {
     );
   }
 
+  // Helper function to check onboarding status more reliably
+  const isOnboardingComplete = (user) => {
+    return user && (user.onboardingComplete === true || user.onboarding?.isComplete === true);
+  };
+
   return (
     <>
       {user && <Navbar />}
@@ -59,7 +64,7 @@ function AppRoutes() {
           path="/onboarding" 
           element={
             user ? (
-              user.onboardingComplete ? (
+              isOnboardingComplete(user) ? (
                 <Navigate to="/dashboard" replace />
               ) : (
                 <Onboarding />
@@ -74,7 +79,7 @@ function AppRoutes() {
           path="/dashboard" 
           element={
             user ? (
-              user.onboardingComplete ? (
+              isOnboardingComplete(user) ? (
                 <>
                   <SimpleDashboard />
                 </>
@@ -91,7 +96,7 @@ function AppRoutes() {
           path="/advisor" 
           element={
             user ? (
-              user.onboardingComplete ? (
+              isOnboardingComplete(user) ? (
                 <Advisor />
               ) : (
                 <Navigate to="/onboarding" replace />
@@ -106,10 +111,8 @@ function AppRoutes() {
           path="/betting" 
           element={
             user ? (
-              user.onboardingComplete ? (
-                <>
-                  <div>Betting Coming Soon</div>
-                </>
+              isOnboardingComplete(user) ? (
+                <BettingSimple />
               ) : (
                 <Navigate to="/onboarding" replace />
               )
@@ -137,7 +140,7 @@ function AppRoutes() {
           path="/" 
           element={
             user ? (
-              user.onboardingComplete ? (
+              isOnboardingComplete(user) ? (
                 <Navigate to="/dashboard" replace />
               ) : (
                 <Navigate to="/onboarding" replace />
