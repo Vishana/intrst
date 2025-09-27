@@ -38,7 +38,8 @@ const Navbar = () => {
       name: 'Betting',
       path: '/betting',
       icon: Target
-    }
+    },
+
   ];
 
   const isActive = (path) => location.pathname === path;

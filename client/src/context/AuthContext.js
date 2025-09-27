@@ -58,6 +58,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // context/AuthContext.jsx
+  const saveOnboarding = async (data) => {
+    try {
+      const res = await axios.put('/api/users/me/onboarding', data);
+      setUser(res.data.user);                 // refresh context so Dashboard/Advisor update
+      toast.success('Onboarding updated');
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to update onboarding';
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  };
+
+
   const register = async (userData) => {
     try {
       // No splitting needed anymore
@@ -111,15 +126,8 @@ export const AuthProvider = ({ children }) => {
     setUser(prev => ({ ...prev, ...userData }));
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    register,
-    completeOnboarding,
-    logout,
-    updateUser
-  };
+  const value = { user, loading, login, register, completeOnboarding, logout, updateUser, saveOnboarding };
+
 
   return (
     <AuthContext.Provider value={value}>

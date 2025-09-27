@@ -16,6 +16,10 @@ import Advisor from './pages/Advisor';
 import BettingSimple from './pages/BettingSimple';
 // import Profile from './pages/Profile';
 
+// import Advisor from './pages/Advisor';
+// import Betting from './pages/Betting';
+import Profile from './pages/Profile';
+
 function App() {
   return (
     <AuthProvider>
@@ -126,9 +130,11 @@ function AppRoutes() {
           path="/profile" 
           element={
             user ? (
-              <>
-                <div>Profile Coming Soon</div>
-              </>
+              user.onboardingComplete ? (
+                <Profile />
+              ) : (
+                <Navigate to="/onboarding" replace />
+              )
             ) : (
               <Navigate to="/login" replace />
             )
