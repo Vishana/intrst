@@ -202,6 +202,7 @@ const Step1 = ({ register, errors }) => (
           <option value="invest-retirement">Invest for Retirement</option>
           <option value="invest-wealth">Build Long-term Wealth</option>
           <option value="budget-control">Better Budget Control</option>
+          <option value="other">Other</option>
         </select>
         {errors.primaryGoal && (
           <p className="mt-1 text-sm text-red-600">{errors.primaryGoal.message}</p>

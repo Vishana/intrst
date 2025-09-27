@@ -44,12 +44,19 @@ const userSchema = new mongoose.Schema({
     },
     primaryGoals: [{
       type: String,
-      enum: ['save_money', 'pay_debt', 'invest', 'buy_house', 'retirement', 'emergency_fund', 'other']
-    }],
+      enum: [
+        'save-emergency', 
+        'pay-debt', 
+        'save-purchase', 
+        'invest-retirement', 
+        'invest-wealth', 
+        'budget-control',
+        'other'
+      ]}],
     riskTolerance: {
       type: String,
-      enum: ['low', 'medium', 'high'],
-      default: 'medium'
+      enum: ['conservative', 'moderate', 'aggressive'],
+      default: 'moderate'
     },
     customGoals: [{
       description: String,
