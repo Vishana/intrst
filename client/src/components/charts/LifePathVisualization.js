@@ -890,7 +890,7 @@ const LifePathVisualization = ({ userId, timeRange }) => {
             
             {/* Chart Lines Explanation */}
             <div className="mb-3 p-2 bg-white border border-gray-300 rounded">
-              <h6 className="font-bold text-xs text-black mb-2">📊 Chart Lines Explained:</h6>
+              <h6 className="font-bold text-xs text-black mb-2">Chart Lines Explained:</h6>
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-4 h-0.5 bg-[#8A9253]"></div>
@@ -922,7 +922,7 @@ const LifePathVisualization = ({ userId, timeRange }) => {
             {/* Methodology Explanation */}
             <div className="mt-2 pt-2 border-t border-gray-300">
               <div className="space-y-1">
-                <p className="text-xs text-black font-medium">🧮 Calculation Methodology:</p>
+                <p className="text-xs text-black font-medium">Calculation Methodology:</p>
                 <ul className="text-xs text-gray-700 space-y-0.5 ml-3">
                   <li>• <strong>Current Path:</strong> 7% annual investment returns, 3.5% salary growth, {((projectionData[0]?.currentPath || 10000) / ((projectionData[0]?.age || 25) * 1000))?.toFixed(1) || '15'}% savings rate</li>
                   <li>• <strong>Optimized Path:</strong> Enhanced savings rates (20-25%), tax-advantaged accounts, diversified portfolios</li>
