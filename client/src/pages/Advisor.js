@@ -360,14 +360,20 @@ const VisualizationDisplay = ({ visualization }) => {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-gray-600">{visualization.description || 'AI-generated financial visualization'}</p>
-      <div className="h-48 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg flex items-center justify-center">
-        <div className="text-center">
-          <PieChart className="w-12 h-12 text-purple-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-600">{visualization.type?.replace('-', ' ').toUpperCase()} Chart</p>
-          <p className="text-xs text-gray-500 mt-1">Interactive visualization would appear here</p>
+      <p className="text-sm text-gray-600">
+        {visualization.title || 'AI-generated financial visualization'}
+      </p>
+      <FinancialChart visualization={visualization} />
+      {visualization.data?.datasets?.[0]?.data && (
+        <div className="mt-4 text-center">
+          <div className="text-lg font-semibold text-gray-900">
+            Total: ${visualization.data.datasets[0].data.reduce((a, b) => a + b, 0).toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-500">
+            {visualization.data.labels?.length || 0} categories
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

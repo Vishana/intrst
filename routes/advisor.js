@@ -504,7 +504,6 @@ function generateSpendingVisualization(transactions) {
         data: sortedEntries.map(([,amount]) => Math.round(amount)),
         backgroundColor: [
           '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-          '#FF9F40', '#FF6B6B', '#C9CBCF', '#4ECDC4', '#45B7D1'
         ]
       }]
     },

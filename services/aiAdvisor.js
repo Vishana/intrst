@@ -41,6 +41,18 @@ class AIFinancialAdvisor {
       ]);
 
       this.agents = {
+        /*
+      dataGenerator: createAgent(`
+      You are a Financial Data Generator AI. Based on the given user profile, financial data, and user query, generate plausible chart data for financial visualization.
+
+      User Profile: {userProfile}
+      Financial Data: {financialData}
+      User Query: {userQuery}
+      Chart Type: {chartType}
+
+      Return ONLY a JSON array of objects like:
+      [{"label": "Category", "value": 123.45}]
+        `),*/
         transactionSummarizer: createAgent(
           'TransactionSummarizer',
           `You are an AI Transaction Summarizer. Input: Raw transactions in JSON. Output: Summarize spending by category and overall monthly patterns in JSON. JSON ONLY.
@@ -147,16 +159,15 @@ Return ONLY valid JSON in this format:
         )
       };
 
-      console.log('🛠 Agents initialized:', Object.keys(this.agents));
+      console.log('Agents initialized:', Object.keys(this.agents));
     } catch (error) {
-      console.error('❌ Failed to initialize agents:', error.message);
+      console.error('Failed to initialize agents:', error.message);
       throw error;
     }
   }
 
   async safeParse(raw, fallback = {}) {
     try {
-      // ✅ Fixed: Better JSON cleaning
       const cleaned = raw.replace(/```json\s*|```\s*|\n/g, '').trim();
       const parsed = JSON.parse(cleaned);
       return parsed;
@@ -310,7 +321,42 @@ IMPORTANT: Return ONLY the JSON array, no other text.
       return { summary: 'Failed to summarize', categories: {}, total: 0 };
     }
   }
+async generateFakeChartData(userProfile, financialData = {}, userQuery = '', chartType = 'bar') {
+  try {
+    const { model } = this.getAvailableModel(); // Gemini model
+    if (!model) throw new Error('No AI model available.');
 
+    const prompt = `
+You are a Financial Data Generator AI. Based on the given user profile, financial data, and user query, generate plausible chart data for financial visualization.
+
+User Profile: ${JSON.stringify(userProfile)}
+Financial Data: ${JSON.stringify(financialData)}
+User Query: "${userQuery}"
+Chart Type: ${chartType}
+
+Return ONLY a JSON array with NO Markdown fences of objects like:
+[{"label": "Category", "value": 123.45}]
+    `;
+
+    console.log('💡 Generating fallback chart data via Gemini...');
+    const response = await model.invoke(prompt);
+    const raw = response.content || response; // depends on response structure
+    const parsed = JSON.parse(raw);
+    console.log(response);
+
+    if (Array.isArray(parsed)) {
+      console.log('✅ Generated fake chart data:', parsed);
+      return parsed;
+    } else {
+      console.warn('⚠️ Gemini returned invalid data, falling back to empty array');
+      return [];
+    }
+
+  } catch (err) {
+    console.warn('❌ Gemini chart generation failed:', err.message);
+    return [];
+  }
+}
   async analyzeSpending(userProfile, summarizedTransactions) {
     console.log('📊 Analyzing spending...');
     try {
@@ -429,7 +475,22 @@ IMPORTANT: Return ONLY the JSON array, no other text.
 
     console.log('💬 Generating financial advice for query:', queryText);
 
-    try {
+  try {
+      // ✅ Fetch real data from MongoDB
+      const userId = userProfile?.id;
+      const [transactions, goals, bets] = await Promise.all([
+        Transaction.find({ userId }),
+        Goal.find({ userId }),
+        Bet.find({ userId })
+      ]);
+
+      // Merge into financialData
+      financialData = {
+        ...financialData,
+        recentTransactions: transactions,
+        currentGoals: goals,
+        bets: bets,
+      };
       const summarized = await this.summarizeTransactions(financialData.recentTransactions || []);
       
       // ✅ Fixed: This was already correct but added error handling
@@ -482,10 +543,17 @@ IMPORTANT: Return ONLY the JSON array, no other text.
       }
 
       // Chart generation
-      if (relevantAgents.includes('chartSelector')) {
-        chartRecommendation = await this.selectChart(summarized, spendingInsights);
-        formattedChartData = await this.formatChartData(summarized);
-      }
+if (relevantAgents.includes('chartSelector')) {
+  chartRecommendation = await this.selectChart(summarized, spendingInsights);
+  formattedChartData = await this.formatChartData(summarized);
+
+  // ✅ Fallback: Generate chart data via Gemini if none exists
+if (!formattedChartData || formattedChartData.length === 0) {
+  console.log('faking some data');
+  formattedChartData = await this.generateFakeChartData(userProfile, financialData, userQuery, chartRecommendation.type);
+}
+
+}
 
       console.log('📌 Invoking FinancialAdvisor agent with all data...');
 
@@ -511,18 +579,43 @@ IMPORTANT: Return ONLY the JSON array, no other text.
       console.log('✅ Financial advice generated');
 
       // Generate chart image if applicable
-      if (chartRecommendation && Array.isArray(formattedChartData) && formattedChartData.length > 0) {
-        try {
-          const chartImageBuffer = await this.generateChartImage(chartRecommendation, formattedChartData);
-          if (chartImageBuffer) {
-            result.visualization.imageBuffer = chartImageBuffer;
-            console.log('✅ Chart image generated and attached');
+// Generate interactive chart data for frontend rendering
+if (chartRecommendation && Array.isArray(formattedChartData) && formattedChartData.length > 0) {
+  try {
+    result.visualization = {
+      type: chartRecommendation.type || 'pie',
+      title: chartRecommendation.title || chartRecommendation.description || 'Financial Chart',
+      data: {
+        labels: formattedChartData.map(d => d.label || 'Unknown'),
+        datasets: [{
+          label: 'Amount ($)',
+          data: formattedChartData.map(d => parseFloat(d.value) || 0),
+          backgroundColor: [
+            '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+            '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+          ],
+          borderColor: '#FFFFFF',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
           }
-        } catch (err) {
-          console.warn('⚠️ Chart generation failed:', err.message);
         }
-      }
-
+      },
+      recommended: true
+    };
+    console.log('Chart data created:', JSON.stringify(result.visualization, null, 2));
+  } catch (err) {
+    console.warn('Chart data preparation failed:', err.message);
+  }
+} else {
+  console.log('No chart data available:', { chartRecommendation, formattedChartData });
+}
       return result;
     } catch (error) {
       console.error('❌ Financial advice generation failed:', error.message);
