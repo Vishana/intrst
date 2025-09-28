@@ -126,7 +126,45 @@ export const AuthProvider = ({ children }) => {
     setUser(prev => ({ ...prev, ...userData }));
   };
 
-  const value = { user, loading, login, register, completeOnboarding, logout, updateUser, saveOnboarding };
+  const saveProfile = async (updates) => {
+    try {
+      const safeUpdates = {
+        ...updates,
+        preferences: {
+          notifications: updates?.preferences?.notifications 
+            ?? user?.preferences?.notifications 
+            ?? {},
+          dashboard: updates?.preferences?.dashboard 
+            ?? user?.preferences?.dashboard 
+            ?? {},
+          ...updates?.preferences,
+        },
+      };
+  
+      // send updates
+      await axios.put('/api/users/profile', safeUpdates);
+  
+      // re-fetch full profile from backend
+      const refreshed = await axios.get('/api/users/profile');
+  
+      setUser((prev) => ({ ...prev, ...refreshed.data.profile }));
+  
+      toast.success('Profile updated successfully');
+      return { success: true, profile: refreshed.data.profile };
+    } catch (err) {
+      console.error('Save profile error:', err);
+      toast.error('Failed to update profile');
+      return { success: false };
+    }
+  };
+  
+  
+  
+
+  const value = { 
+    user, loading, login, register, completeOnboarding, logout, 
+    updateUser, saveOnboarding, saveProfile 
+  };
 
 
   return (

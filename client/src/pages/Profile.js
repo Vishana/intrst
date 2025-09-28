@@ -157,27 +157,39 @@ const Profile = () => {
   );
 };
 
-// Profile Tab Component
-const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, updateUser }) => {
+const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading }) => {
+  const { saveProfile } = useAuth();   // ✅ bring in saveProfile from context
+
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : '',
     email: user?.email || '',
-    phone: user?.profile?.phone || '',
-    location: user?.profile?.location || '',
-    bio: user?.profile?.bio || ''
+    phone: user?.preferences?.phone || '',
+    location: user?.preferences?.location || '',
+    bio: user?.preferences?.bio || ''
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
-      // In a real app, you'd call your API to update the profile
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      updateUser({ ...user, ...formData, profile: { ...user?.profile, ...formData } });
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to update profile:', error);
+      const [firstName, ...lastParts] = formData.name.split(' ');
+      const payload = {
+        firstName,
+        lastName: lastParts.join(' '),
+        preferences: {
+          phone: formData.phone,
+          location: formData.location,
+          bio: formData.bio,
+        }
+      };
+
+      const res = await saveProfile(payload);
+      if (res.success) {
+        setIsEditing(false);
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
     } finally {
       setLoading(false);
     }
@@ -201,6 +213,7 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
       {isEditing ? (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Full Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name
@@ -208,12 +221,13 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                 className="input-field"
                 required
               />
             </div>
 
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email Address
@@ -221,59 +235,14 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
                 className="input-field"
                 required
+                disabled   // usually not editable
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Age
-              </label>
-              <select
-                value={formData.age || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value }))}
-                className="input-field"
-              >
-                <option value="">Select your age range</option>
-                <option value="18-25">18-25</option>
-                <option value="26-35">26-35</option>
-                ...
-              </select>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Life Stage
-              </label>
-              <select
-                value={formData.lifeStage || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, lifeStage: e.target.value }))}
-                className="input-field"
-              >
-                <option value="student">Student</option>
-                <option value="single">Single Professional</option>
-                <option value="couple">Couple (No Kids)</option>
-                ...
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Primary Goal
-              </label>
-              <select
-                value={formData.primaryGoal || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, primaryGoal: e.target.value }))}
-                className="input-field"
-              >
-                <option value="save-emergency">Build Emergency Fund</option>
-                <option value="pay-debt">Pay Off Debt</option>
-                <option value="invest-retirement">Invest for Retirement</option>
-                ...
-              </select>
-            </div>
-
+            {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Phone Number
@@ -281,12 +250,13 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
                 className="input-field"
                 placeholder="(555) 123-4567"
               />
             </div>
 
+            {/* Location */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Location
@@ -294,39 +264,34 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
               <input
                 type="text"
                 value={formData.location}
-                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
                 className="input-field"
                 placeholder="City, Country"
               />
             </div>
           </div>
 
+          {/* Bio */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Bio
             </label>
             <textarea
               value={formData.bio}
-              onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+              onChange={(e) => setFormData((p) => ({ ...p, bio: e.target.value }))}
               className="input-field resize-none h-24"
               placeholder="Tell us about yourself..."
             />
           </div>
 
+          {/* Actions */}
           <div className="flex space-x-3">
             <button
               type="submit"
               disabled={loading}
               className="btn-primary flex items-center disabled:opacity-50"
             >
-              {loading ? (
-                <LoadingSpinner size="small" />
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Changes
-                </>
-              )}
+              {loading ? <LoadingSpinner size="small" /> : (<><Save className="w-4 h-4 mr-2" /> Save Changes</>)}
             </button>
             <button
               type="button"
@@ -339,77 +304,35 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
           </div>
         </form>
       ) : (
+        // ✅ unchanged view mode
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <ProfileField
-                icon={User}
-                label="Full Name"
-                value={user?.name || 'Not provided'}
-              />
-              <ProfileField
-                icon={Mail}
-                label="Email Address"
-                value={user?.email || 'Not provided'}
-              />
-            </div>
-            <div className="space-y-4">
-              <ProfileField
-                icon={Phone}
-                label="Phone Number"
-                value={user?.profile?.phone || 'Not provided'}
-              />
-              <ProfileField
-                icon={MapPin}
-                label="Location"
-                value={user?.profile?.location || 'Not provided'}
-              />
-            </div>
+            <ProfileField icon={User} label="Full Name" value={`${user?.firstName || ''} ${user?.lastName || ''}`} />
+            <ProfileField icon={Mail} label="Email Address" value={user?.email || 'Not provided'} />
+            <ProfileField icon={Phone} label="Phone Number" value={user?.preferences?.phone || 'Not provided'} />
+            <ProfileField icon={MapPin} label="Location" value={user?.preferences?.location || 'Not provided'} />
           </div>
 
-          {user?.profile?.bio && (
+          {user?.preferences?.bio && (
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-2">Bio</h4>
               <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                {user.profile.bio}
+                {user.preferences.bio}
               </p>
             </div>
           )}
-
-          {/* Account Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-gray-200">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-primary-600">
-                {user?.gamification?.level || 1}
-              </p>
-              <p className="text-sm text-gray-600">Level</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-success-600">
-                {user?.gamification?.points || 0}
-              </p>
-              <p className="text-sm text-gray-600">Points</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">
-                {user?.gamification?.completedChallenges || 0}
-              </p>
-              <p className="text-sm text-gray-600">Challenges</p>
-            </div>
-          </div>
         </div>
       )}
     </div>
   );
 };
 
-// Financial Tab Component
+
 const FinancialTab = ({ user, formatCurrency, showAmounts, setShowAmounts }) => {
-  const { saveOnboarding } = useAuth();
+  const { saveProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // local form state (strings for inputs)
   const [form, setForm] = useState(() => ({
     monthlyIncome: valueStr(user?.financialProfile?.monthlyIncome),
     monthlyExpenses: valueStr(user?.financialProfile?.monthlyExpenses),
@@ -417,7 +340,7 @@ const FinancialTab = ({ user, formatCurrency, showAmounts, setShowAmounts }) => 
     debt: valueStr(user?.financialProfile?.debt),
   }));
 
-  const onChange = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }));
+  const onChange = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const cancel = () => {
     setForm({
@@ -432,21 +355,22 @@ const FinancialTab = ({ user, formatCurrency, showAmounts, setShowAmounts }) => 
   const onSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const payload = {
-      monthlyIncome: clampNonNeg(form.monthlyIncome),
-      monthlyExpenses: clampNonNeg(form.monthlyExpenses),
-      currentSavings: clampNonNeg(form.currentSavings),
-      debt: clampNonNeg(form.debt),
-    };
     try {
-      const res = await saveOnboarding(payload);
-      if (res?.success) setIsEditing(false);
+      const res = await saveProfile({
+        financialProfile: {
+          monthlyIncome: clampNonNeg(form.monthlyIncome),
+          monthlyExpenses: clampNonNeg(form.monthlyExpenses),
+          currentSavings: clampNonNeg(form.currentSavings),
+          debt: clampNonNeg(form.debt),
+        }
+      });
+      if (res.success) setIsEditing(false);
     } finally {
       setSaving(false);
     }
   };
 
-  // view values (numbers) -> formatted or ****
+  // view values
   const view = {
     income: showAmounts ? formatCurrency(toNumber(form.monthlyIncome)) : '****',
     expenses: showAmounts ? formatCurrency(toNumber(form.monthlyExpenses)) : '****',
@@ -457,7 +381,7 @@ const FinancialTab = ({ user, formatCurrency, showAmounts, setShowAmounts }) => 
 
   return (
     <div>
-      {/* Header */}
+      {/* header + buttons */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Financial Information</h2>
         <div className="flex gap-2">
@@ -474,77 +398,46 @@ const FinancialTab = ({ user, formatCurrency, showAmounts, setShowAmounts }) => 
         </div>
       </div>
 
-      {/* View mode */}
-      {!isEditing && (
+      {!isEditing ? (
         <>
+          {/* view mode cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FinancialMetricCard title="Monthly Income"   value={view.income}   change={+5.2} />
+            <FinancialMetricCard title="Monthly Income" value={view.income} change={+5.2} />
             <FinancialMetricCard title="Monthly Expenses" value={view.expenses} change={-2.1} />
-            <FinancialMetricCard title="Current Savings"  value={view.savings}  change={+12.3} />
-            <FinancialMetricCard title="Total Debt"       value={view.debt}     change={-8.5} />
-          </div>
-
-          <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Financial Health Score</h4>
-            <div className="flex items-center space-x-4">
-              <div className="flex-1">
-                <div className="w-full bg-blue-200 rounded-full h-3">
-                  <div className="bg-blue-600 h-3 rounded-full" style={{ width: `${view.health}%` }} />
-                </div>
-              </div>
-              <span className="text-2xl font-bold text-blue-900">{view.health}</span>
-            </div>
-            <p className="text-sm text-blue-800 mt-2">
-              Your financial health is looking good! Keep up the great work.
-            </p>
+            <FinancialMetricCard title="Current Savings" value={view.savings} change={+12.3} />
+            <FinancialMetricCard title="Total Debt" value={view.debt} change={-8.5} />
           </div>
         </>
-      )}
-
-      {/* Edit mode */}
-      {isEditing && (
+      ) : (
         <form onSubmit={onSave} className="space-y-6">
+          {/* inputs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
-              { key: 'monthlyIncome',   label: 'Monthly Income (after taxes)', required: true },
-              { key: 'monthlyExpenses', label: 'Monthly Expenses (estimated)',  required: true },
-              { key: 'currentSavings',  label: 'Current Savings',               required: true },
-              { key: 'debt',            label: 'Total Debt (if any)',           required: false },
+              { key: 'monthlyIncome', label: 'Monthly Income (after taxes)' },
+              { key: 'monthlyExpenses', label: 'Monthly Expenses' },
+              { key: 'currentSavings', label: 'Current Savings' },
+              { key: 'debt', label: 'Total Debt' },
             ].map((f) => (
               <div key={f.key}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500">$</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    className="input-field pl-8"
-                    value={form[f.key] ?? ''}
-                    onChange={onChange(f.key)}
-                    required={!!f.required}
-                    placeholder="0"
-                  />
-                </div>
+                <input
+                  type="number"
+                  value={form[f.key] ?? ''}
+                  onChange={onChange(f.key)}
+                  className="input-field"
+                  min="0"
+                  step="any"
+                />
               </div>
             ))}
           </div>
-
-          {toNumber(form.monthlyIncome) > 0 && (
-            <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-              💡 Recommended monthly savings: ${Math.round(toNumber(form.monthlyIncome) * 0.2).toLocaleString()} (50/30/20 rule)
-            </div>
-          )}
 
           <div className="flex gap-3">
             <button type="submit" disabled={saving} className="btn-primary flex items-center disabled:opacity-50">
               {saving ? <LoadingSpinner size="small" /> : (<><Save className="w-4 h-4 mr-2" /> Save</>)}
             </button>
             <button type="button" onClick={cancel} className="btn-secondary flex items-center">
-              <X className="w-4 h-4 mr-2" />
-              Cancel
+              <X className="w-4 h-4 mr-2" /> Cancel
             </button>
           </div>
         </form>
@@ -555,9 +448,9 @@ const FinancialTab = ({ user, formatCurrency, showAmounts, setShowAmounts }) => 
 
 
 
-// Goals Tab Component
+//GoalsTab
 const GoalsTab = ({ user }) => {
-  const { saveOnboarding } = useAuth();
+  const { saveProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -567,8 +460,7 @@ const GoalsTab = ({ user }) => {
     investmentTimeline: user?.onboarding?.investmentTimeline || 'long',
   });
 
-  const onChange = (key) => (e) =>
-    setForm((p) => ({ ...p, [key]: e.target.value }));
+  const onChange = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const cancel = () => {
     setForm({
@@ -583,148 +475,70 @@ const GoalsTab = ({ user }) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await saveOnboarding({
-        riskTolerance: form.riskTolerance,
-        investmentExperience: form.investmentExperience,
-        investmentTimeline: form.investmentTimeline,
+      const res = await saveProfile({
+        onboarding: {
+          riskTolerance: form.riskTolerance,
+          investmentExperience: form.investmentExperience,
+          investmentTimeline: form.investmentTimeline,
+        }
       });
-      if (res?.success) setIsEditing(false);
+      if (res.success) setIsEditing(false);
     } finally {
       setSaving(false);
     }
   };
 
-  // helpers for pretty labels
-  const pretty = {
-    risk: labelMap.risk[form.riskTolerance] || form.riskTolerance,
-    xp: labelMap.experience[form.investmentExperience] || form.investmentExperience,
-    timeline: labelMap.timeline[form.investmentTimeline] || form.investmentTimeline,
-  };
-
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Goals & Preferences</h2>
         {!isEditing && (
           <button onClick={() => setIsEditing(true)} className="btn-secondary flex items-center">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
+            <Edit className="w-4 h-4 mr-2" /> Edit
           </button>
         )}
       </div>
 
-      {/* View mode */}
-      {!isEditing && (
+      {!isEditing ? (
         <div className="space-y-6">
-          <div>
-            <h4 className="font-medium text-gray-900 mb-3">Investment Preferences</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InfoPill label="Risk Tolerance" value={labelMap.risk[user?.onboarding?.riskTolerance] || 'Moderate'} />
-              <InfoPill label="Experience Level" value={labelMap.experience[user?.onboarding?.investmentExperience] || 'Some Experience'} />
-              <InfoPill label="Timeline" value={labelMap.timeline[user?.onboarding?.investmentTimeline] || 'Long-term'} />
-              <InfoPill label="Primary Goal" value={(user?.onboarding?.primaryGoal || 'Build Wealth').replace('-', ' ')} />
-            </div>
-          </div>
-
-          {/* Active Goals (still display-only for now) */}
-          <div>
-            <h4 className="font-medium text-gray-900 mb-3">Active Goals</h4>
-            <div className="space-y-3">
-              {[
-                { title: 'Emergency Fund', progress: 65, target: '$10,000' },
-                { title: 'Vacation Savings', progress: 80, target: '$3,000' },
-                { title: 'New Car Fund', progress: 30, target: '$25,000' }
-              ].map((goal, i) => (
-                <div key={i} className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-gray-900">{goal.title}</span>
-                    <span className="text-sm text-gray-600">Target: {goal.target}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-primary-600 h-2 rounded-full" style={{ width: `${goal.progress}%` }} />
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">{goal.progress}% complete</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <InfoPill label="Risk Tolerance" value={labelMap.risk[user?.onboarding?.riskTolerance]} />
+          <InfoPill label="Experience Level" value={labelMap.experience[user?.onboarding?.investmentExperience]} />
+          <InfoPill label="Timeline" value={labelMap.timeline[user?.onboarding?.investmentTimeline]} />
         </div>
-      )}
+      ) : (
+        <form onSubmit={onSave} className="space-y-6">
+          {/* Risk */}
+          <label>Risk Tolerance</label>
+          <select value={form.riskTolerance} onChange={onChange('riskTolerance')} className="input-field">
+            <option value="conservative">Conservative</option>
+            <option value="moderate">Moderate</option>
+            <option value="aggressive">Aggressive</option>
+          </select>
 
-      {/* Edit mode */}
-      {isEditing && (
-        <form onSubmit={onSave} className="space-y-8">
-          {/* Risk Tolerance */}
-          <section>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Risk Tolerance
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {[
-                { value: 'conservative', label: 'Conservative', desc: 'Stable, low risk' },
-                { value: 'moderate', label: 'Moderate', desc: 'Balanced risk/return' },
-                { value: 'aggressive', label: 'Aggressive', desc: 'High risk/high reward' },
-              ].map(opt => (
-                <label key={opt.value} className="p-3 border rounded-lg flex items-start space-x-3 cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="riskTolerance"
-                    value={opt.value}
-                    checked={form.riskTolerance === opt.value}
-                    onChange={onChange('riskTolerance')}
-                    className="mt-1 h-4 w-4 text-primary-600"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">{opt.label}</div>
-                    <div className="text-sm text-gray-500">{opt.desc}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </section>
+          {/* Experience */}
+          <label>Experience</label>
+          <select value={form.investmentExperience} onChange={onChange('investmentExperience')} className="input-field">
+            <option value="beginner">Beginner</option>
+            <option value="some">Some</option>
+            <option value="experienced">Experienced</option>
+            <option value="expert">Expert</option>
+          </select>
 
-          {/* Experience + Timeline */}
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Investment Experience</label>
-              <select
-                className="input-field"
-                value={form.investmentExperience}
-                onChange={onChange('investmentExperience')}
-              >
-                <option value="">Select level</option>
-                <option value="beginner">Beginner (Never invested)</option>
-                <option value="some">Some experience</option>
-                <option value="experienced">Experienced</option>
-                <option value="expert">Expert</option>
-              </select>
-            </div>
+          {/* Timeline */}
+          <label>Timeline</label>
+          <select value={form.investmentTimeline} onChange={onChange('investmentTimeline')} className="input-field">
+            <option value="short">Short-term</option>
+            <option value="medium">Medium-term</option>
+            <option value="long">Long-term</option>
+            <option value="retirement">Retirement</option>
+          </select>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Investment Timeline</label>
-              <select
-                className="input-field"
-                value={form.investmentTimeline}
-                onChange={onChange('investmentTimeline')}
-              >
-                <option value="">Select timeline</option>
-                <option value="short">Short-term (1–3 years)</option>
-                <option value="medium">Medium-term (3–10 years)</option>
-                <option value="long">Long-term (10+ years)</option>
-                <option value="retirement">Retirement</option>
-              </select>
-            </div>
-          </section>
-
-          {/* Actions */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-4">
             <button type="submit" disabled={saving} className="btn-primary flex items-center disabled:opacity-50">
               {saving ? <LoadingSpinner size="small" /> : (<><Save className="w-4 h-4 mr-2" /> Save</>)}
             </button>
             <button type="button" onClick={cancel} className="btn-secondary flex items-center">
-              <X className="w-4 h-4 mr-2" />
-              Cancel
+              <X className="w-4 h-4 mr-2" /> Cancel
             </button>
           </div>
         </form>
@@ -732,6 +546,7 @@ const GoalsTab = ({ user }) => {
     </div>
   );
 };
+
 
 /* Small display helper used above */
 const InfoPill = ({ label, value }) => (

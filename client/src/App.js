@@ -130,7 +130,7 @@ function AppRoutes() {
           path="/profile" 
           element={
             user ? (
-              user.onboardingComplete ? (
+              isOnboardingComplete(user) ? (
                 <Profile />
               ) : (
                 <Navigate to="/onboarding" replace />
@@ -140,6 +140,7 @@ function AppRoutes() {
             )
           } 
         />
+
         
         {/* Default Routes */}
         <Route 
@@ -147,12 +148,12 @@ function AppRoutes() {
           element={
             user ? (
               isOnboardingComplete(user) ? (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/dashboard"  />
               ) : (
-                <Navigate to="/onboarding" replace />
+                <Navigate to="/onboarding"  />
               )
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/login"  />
             )
           } 
         />
