@@ -58,6 +58,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // context/AuthContext.jsx
+  const saveOnboarding = async (data) => {
+    try {
+      const res = await axios.put('/api/users/me/onboarding', data);
+      setUser(res.data.user);                 // refresh context so Dashboard/Advisor update
+      toast.success('Onboarding updated');
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to update onboarding';
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  };
+
+
   const register = async (userData) => {
     try {
       // No splitting needed anymore
@@ -111,15 +126,46 @@ export const AuthProvider = ({ children }) => {
     setUser(prev => ({ ...prev, ...userData }));
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    register,
-    completeOnboarding,
-    logout,
-    updateUser
+  const saveProfile = async (updates) => {
+    try {
+      const safeUpdates = {
+        ...updates,
+        preferences: {
+          notifications: updates?.preferences?.notifications 
+            ?? user?.preferences?.notifications 
+            ?? {},
+          dashboard: updates?.preferences?.dashboard 
+            ?? user?.preferences?.dashboard 
+            ?? {},
+          ...updates?.preferences,
+        },
+      };
+  
+      // send updates
+      await axios.put('/api/users/profile', safeUpdates);
+  
+      // re-fetch full profile from backend
+      const refreshed = await axios.get('/api/users/profile');
+  
+      setUser((prev) => ({ ...prev, ...refreshed.data.profile }));
+  
+      toast.success('Profile updated successfully');
+      return { success: true, profile: refreshed.data.profile };
+    } catch (err) {
+      console.error('Save profile error:', err);
+      toast.error('Failed to update profile');
+      return { success: false };
+    }
   };
+  
+  
+  
+
+  const value = { 
+    user, loading, login, register, completeOnboarding, logout, 
+    updateUser, saveOnboarding, saveProfile 
+  };
+
 
   return (
     <AuthContext.Provider value={value}>

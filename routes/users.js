@@ -104,24 +104,22 @@ router.get('/profile', auth, async (req, res) => {
   }
 });
 
-// @route   PUT /api/users/profile
-// @desc    Update user profile
-// @access  Private
 router.put('/profile', auth, async (req, res) => {
   try {
     const {
       firstName,
       lastName,
       financialProfile,
-      preferences
+      preferences,
+      onboarding // 👈 catch onboarding updates from frontend
     } = req.body;
-    
+
     const user = await User.findById(req.user._id);
-    
+
     // Update basic info
     if (firstName) user.firstName = firstName.trim();
     if (lastName) user.lastName = lastName.trim();
-    
+
     // Update financial profile
     if (financialProfile) {
       user.financialProfile = {
@@ -129,7 +127,7 @@ router.put('/profile', auth, async (req, res) => {
         ...financialProfile
       };
     }
-    
+
     // Update preferences
     if (preferences) {
       user.preferences = {
@@ -137,21 +135,33 @@ router.put('/profile', auth, async (req, res) => {
         ...preferences
       };
     }
-    
+
+    if (onboarding) {
+      user.onboarding = {
+        ...user.onboarding,
+        ...onboarding
+      };
+    }
+
     await user.save();
-    
+
     res.json({
-      message: 'Profile updated successfully',
-      profile: {
+      success: true,
+      user: {
         id: user._id,
+        email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        displayName: user.getDisplayName(),
+        onboarding: user.onboarding,
         financialProfile: user.financialProfile,
         preferences: user.preferences,
-        netWorth: user.calculateNetWorth()
+        gamification: user.gamification,
+        netWorth: user.calculateNetWorth(),
+        memberSince: user.createdAt,
+        lastLogin: user.lastLogin
       }
     });
-    
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({

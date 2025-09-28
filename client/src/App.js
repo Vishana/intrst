@@ -17,6 +17,10 @@ import Betting from './pages/Betting';
 import Integrations from './pages/Integrations';
 // import Profile from './pages/Profile';
 
+// import Advisor from './pages/Advisor';
+// import Betting from './pages/Betting';
+import Profile from './pages/Profile';
+
 function App() {
   return (
     <AuthProvider>
@@ -142,14 +146,17 @@ function AppRoutes() {
           path="/profile" 
           element={
             user ? (
-              <>
-                <div>Profile Coming Soon</div>
-              </>
+              isOnboardingComplete(user) ? (
+                <Profile />
+              ) : (
+                <Navigate to="/onboarding" replace />
+              )
             ) : (
               <Navigate to="/login" replace />
             )
           } 
         />
+
         
         {/* Default Routes */}
         <Route 
@@ -157,12 +164,12 @@ function AppRoutes() {
           element={
             user ? (
               isOnboardingComplete(user) ? (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/dashboard"  />
               ) : (
-                <Navigate to="/onboarding" replace />
+                <Navigate to="/onboarding"  />
               )
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/login"  />
             )
           } 
         />

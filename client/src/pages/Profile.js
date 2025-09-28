@@ -157,27 +157,39 @@ const Profile = () => {
   );
 };
 
-// Profile Tab Component
-const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, updateUser }) => {
+const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading }) => {
+  const { saveProfile } = useAuth();   // ✅ bring in saveProfile from context
+
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : '',
     email: user?.email || '',
-    phone: user?.profile?.phone || '',
-    location: user?.profile?.location || '',
-    bio: user?.profile?.bio || ''
+    phone: user?.preferences?.phone || '',
+    location: user?.preferences?.location || '',
+    bio: user?.preferences?.bio || ''
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
-      // In a real app, you'd call your API to update the profile
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      updateUser({ ...user, ...formData, profile: { ...user?.profile, ...formData } });
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to update profile:', error);
+      const [firstName, ...lastParts] = formData.name.split(' ');
+      const payload = {
+        firstName,
+        lastName: lastParts.join(' '),
+        preferences: {
+          phone: formData.phone,
+          location: formData.location,
+          bio: formData.bio,
+        }
+      };
+
+      const res = await saveProfile(payload);
+      if (res.success) {
+        setIsEditing(false);
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
     } finally {
       setLoading(false);
     }
@@ -201,6 +213,7 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
       {isEditing ? (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Full Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name
@@ -208,12 +221,13 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                 className="input-field"
                 required
               />
             </div>
 
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email Address
@@ -221,12 +235,14 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
                 className="input-field"
                 required
+                disabled   // usually not editable
               />
             </div>
 
+            {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Phone Number
@@ -234,12 +250,13 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
                 className="input-field"
                 placeholder="(555) 123-4567"
               />
             </div>
 
+            {/* Location */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Location
@@ -247,39 +264,34 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
               <input
                 type="text"
                 value={formData.location}
-                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
                 className="input-field"
                 placeholder="City, Country"
               />
             </div>
           </div>
 
+          {/* Bio */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Bio
             </label>
             <textarea
               value={formData.bio}
-              onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+              onChange={(e) => setFormData((p) => ({ ...p, bio: e.target.value }))}
               className="input-field resize-none h-24"
               placeholder="Tell us about yourself..."
             />
           </div>
 
+          {/* Actions */}
           <div className="flex space-x-3">
             <button
               type="submit"
               disabled={loading}
               className="btn-primary flex items-center disabled:opacity-50"
             >
-              {loading ? (
-                <LoadingSpinner size="small" />
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Changes
-                </>
-              )}
+              {loading ? <LoadingSpinner size="small" /> : (<><Save className="w-4 h-4 mr-2" /> Save Changes</>)}
             </button>
             <button
               type="button"
@@ -292,194 +304,278 @@ const ProfileTab = ({ user, isEditing, setIsEditing, loading, setLoading, update
           </div>
         </form>
       ) : (
+        // ✅ unchanged view mode
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <ProfileField
-                icon={User}
-                label="Full Name"
-                value={user?.name || 'Not provided'}
-              />
-              <ProfileField
-                icon={Mail}
-                label="Email Address"
-                value={user?.email || 'Not provided'}
-              />
-            </div>
-            <div className="space-y-4">
-              <ProfileField
-                icon={Phone}
-                label="Phone Number"
-                value={user?.profile?.phone || 'Not provided'}
-              />
-              <ProfileField
-                icon={MapPin}
-                label="Location"
-                value={user?.profile?.location || 'Not provided'}
-              />
-            </div>
+            <ProfileField icon={User} label="Full Name" value={`${user?.firstName || ''} ${user?.lastName || ''}`} />
+            <ProfileField icon={Mail} label="Email Address" value={user?.email || 'Not provided'} />
+            <ProfileField icon={Phone} label="Phone Number" value={user?.preferences?.phone || 'Not provided'} />
+            <ProfileField icon={MapPin} label="Location" value={user?.preferences?.location || 'Not provided'} />
           </div>
 
-          {user?.profile?.bio && (
+          {user?.preferences?.bio && (
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-2">Bio</h4>
               <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                {user.profile.bio}
+                {user.preferences.bio}
               </p>
             </div>
           )}
-
-          {/* Account Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-gray-200">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-primary-600">
-                {user?.gamification?.level || 1}
-              </p>
-              <p className="text-sm text-gray-600">Level</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-success-600">
-                {user?.gamification?.points || 0}
-              </p>
-              <p className="text-sm text-gray-600">Points</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">
-                {user?.gamification?.completedChallenges || 0}
-              </p>
-              <p className="text-sm text-gray-600">Challenges</p>
-            </div>
-          </div>
         </div>
       )}
     </div>
   );
 };
 
-// Financial Tab Component
-const FinancialTab = ({ user, formatCurrency, showAmounts, setShowAmounts }) => (
-  <div>
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-xl font-semibold text-gray-900">Financial Information</h2>
-      <button
-        onClick={() => setShowAmounts(!showAmounts)}
-        className="btn-secondary flex items-center"
-      >
-        {showAmounts ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-        {showAmounts ? 'Hide Amounts' : 'Show Amounts'}
-      </button>
-    </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <FinancialMetricCard
-        title="Monthly Income"
-        value={formatCurrency(user?.financialProfile?.monthlyIncome || 0)}
-        change={+5.2}
-      />
-      <FinancialMetricCard
-        title="Monthly Expenses"
-        value={formatCurrency(user?.financialProfile?.monthlyExpenses || 0)}
-        change={-2.1}
-      />
-      <FinancialMetricCard
-        title="Current Savings"
-        value={formatCurrency(user?.financialProfile?.currentSavings || 0)}
-        change={+12.3}
-      />
-      <FinancialMetricCard
-        title="Total Debt"
-        value={formatCurrency(user?.financialProfile?.debt || 0)}
-        change={-8.5}
-      />
-    </div>
+const FinancialTab = ({ user, formatCurrency, showAmounts, setShowAmounts }) => {
+  const { saveProfile } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-    <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-      <h4 className="font-medium text-blue-900 mb-2">Financial Health Score</h4>
-      <div className="flex items-center space-x-4">
-        <div className="flex-1">
-          <div className="w-full bg-blue-200 rounded-full h-3">
-            <div
-              className="bg-blue-600 h-3 rounded-full"
-              style={{ width: `${user?.financialProfile?.healthScore || 75}%` }}
-            />
-          </div>
-        </div>
-        <span className="text-2xl font-bold text-blue-900">
-          {user?.financialProfile?.healthScore || 75}
-        </span>
-      </div>
-      <p className="text-sm text-blue-800 mt-2">
-        Your financial health is looking good! Keep up the great work.
-      </p>
-    </div>
-  </div>
-);
+  const [form, setForm] = useState(() => ({
+    monthlyIncome: valueStr(user?.financialProfile?.monthlyIncome),
+    monthlyExpenses: valueStr(user?.financialProfile?.monthlyExpenses),
+    currentSavings: valueStr(user?.financialProfile?.currentSavings),
+    debt: valueStr(user?.financialProfile?.debt),
+  }));
 
-// Goals Tab Component
-const GoalsTab = ({ user }) => (
-  <div>
-    <h2 className="text-xl font-semibold text-gray-900 mb-6">Goals & Preferences</h2>
-    
-    <div className="space-y-6">
-      <div>
-        <h4 className="font-medium text-gray-900 mb-3">Investment Preferences</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <span className="text-sm font-medium text-gray-700">Risk Tolerance:</span>
-            <span className="ml-2 text-sm text-gray-900 capitalize">
-              {user?.onboarding?.riskTolerance || 'Moderate'}
-            </span>
-          </div>
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <span className="text-sm font-medium text-gray-700">Experience Level:</span>
-            <span className="ml-2 text-sm text-gray-900 capitalize">
-              {user?.onboarding?.investmentExperience || 'Some Experience'}
-            </span>
-          </div>
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <span className="text-sm font-medium text-gray-700">Timeline:</span>
-            <span className="ml-2 text-sm text-gray-900 capitalize">
-              {user?.onboarding?.investmentTimeline || 'Long-term'}
-            </span>
-          </div>
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <span className="text-sm font-medium text-gray-700">Primary Goal:</span>
-            <span className="ml-2 text-sm text-gray-900 capitalize">
-              {user?.onboarding?.primaryGoal?.replace('-', ' ') || 'Build Wealth'}
-            </span>
-          </div>
+  const onChange = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const cancel = () => {
+    setForm({
+      monthlyIncome: valueStr(user?.financialProfile?.monthlyIncome),
+      monthlyExpenses: valueStr(user?.financialProfile?.monthlyExpenses),
+      currentSavings: valueStr(user?.financialProfile?.currentSavings),
+      debt: valueStr(user?.financialProfile?.debt),
+    });
+    setIsEditing(false);
+  };
+
+  const onSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await saveProfile({
+        financialProfile: {
+          monthlyIncome: clampNonNeg(form.monthlyIncome),
+          monthlyExpenses: clampNonNeg(form.monthlyExpenses),
+          currentSavings: clampNonNeg(form.currentSavings),
+          debt: clampNonNeg(form.debt),
+        }
+      });
+      if (res.success) setIsEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // view values
+  const view = {
+    income: showAmounts ? formatCurrency(toNumber(form.monthlyIncome)) : '****',
+    expenses: showAmounts ? formatCurrency(toNumber(form.monthlyExpenses)) : '****',
+    savings: showAmounts ? formatCurrency(toNumber(form.currentSavings)) : '****',
+    debt: showAmounts ? formatCurrency(toNumber(form.debt)) : '****',
+    health: user?.financialProfile?.healthScore ?? 75,
+  };
+
+  return (
+    <div>
+      {/* header + buttons */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Financial Information</h2>
+        <div className="flex gap-2">
+          <button onClick={() => setShowAmounts(!showAmounts)} className="btn-secondary flex items-center">
+            {showAmounts ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+            {showAmounts ? 'Hide Amounts' : 'Show Amounts'}
+          </button>
+          {!isEditing && (
+            <button onClick={() => setIsEditing(true)} className="btn-secondary flex items-center">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </button>
+          )}
         </div>
       </div>
 
-      <div>
-        <h4 className="font-medium text-gray-900 mb-3">Active Goals</h4>
-        <div className="space-y-3">
-          {[
-            { title: 'Emergency Fund', progress: 65, target: '$10,000' },
-            { title: 'Vacation Savings', progress: 80, target: '$3,000' },
-            { title: 'New Car Fund', progress: 30, target: '$25,000' }
-          ].map((goal, index) => (
-            <div key={index} className="p-4 border border-gray-200 rounded-lg">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-medium text-gray-900">{goal.title}</span>
-                <span className="text-sm text-gray-600">Target: {goal.target}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-primary-600 h-2 rounded-full"
-                  style={{ width: `${goal.progress}%` }}
+      {!isEditing ? (
+        <>
+          {/* view mode cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FinancialMetricCard title="Monthly Income" value={view.income} change={+5.2} />
+            <FinancialMetricCard title="Monthly Expenses" value={view.expenses} change={-2.1} />
+            <FinancialMetricCard title="Current Savings" value={view.savings} change={+12.3} />
+            <FinancialMetricCard title="Total Debt" value={view.debt} change={-8.5} />
+          </div>
+        </>
+      ) : (
+        <form onSubmit={onSave} className="space-y-6">
+          {/* inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              { key: 'monthlyIncome', label: 'Monthly Income (after taxes)' },
+              { key: 'monthlyExpenses', label: 'Monthly Expenses' },
+              { key: 'currentSavings', label: 'Current Savings' },
+              { key: 'debt', label: 'Total Debt' },
+            ].map((f) => (
+              <div key={f.key}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+                <input
+                  type="number"
+                  value={form[f.key] ?? ''}
+                  onChange={onChange(f.key)}
+                  className="input-field"
+                  min="0"
+                  step="any"
                 />
               </div>
-              <div className="text-sm text-gray-600 mt-1">
-                {goal.progress}% complete
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            <button type="submit" disabled={saving} className="btn-primary flex items-center disabled:opacity-50">
+              {saving ? <LoadingSpinner size="small" /> : (<><Save className="w-4 h-4 mr-2" /> Save</>)}
+            </button>
+            <button type="button" onClick={cancel} className="btn-secondary flex items-center">
+              <X className="w-4 h-4 mr-2" /> Cancel
+            </button>
+          </div>
+        </form>
+      )}
     </div>
+  );
+};
+
+
+
+//GoalsTab
+const GoalsTab = ({ user }) => {
+  const { saveProfile } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [form, setForm] = useState({
+    riskTolerance: user?.onboarding?.riskTolerance || 'moderate',
+    investmentExperience: user?.onboarding?.investmentExperience || 'some',
+    investmentTimeline: user?.onboarding?.investmentTimeline || 'long',
+  });
+
+  const onChange = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const cancel = () => {
+    setForm({
+      riskTolerance: user?.onboarding?.riskTolerance || 'moderate',
+      investmentExperience: user?.onboarding?.investmentExperience || 'some',
+      investmentTimeline: user?.onboarding?.investmentTimeline || 'long',
+    });
+    setIsEditing(false);
+  };
+
+  const onSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await saveProfile({
+        onboarding: {
+          riskTolerance: form.riskTolerance,
+          investmentExperience: form.investmentExperience,
+          investmentTimeline: form.investmentTimeline,
+        }
+      });
+      if (res.success) setIsEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Goals & Preferences</h2>
+        {!isEditing && (
+          <button onClick={() => setIsEditing(true)} className="btn-secondary flex items-center">
+            <Edit className="w-4 h-4 mr-2" /> Edit
+          </button>
+        )}
+      </div>
+
+      {!isEditing ? (
+        <div className="space-y-6">
+          <InfoPill label="Risk Tolerance" value={labelMap.risk[user?.onboarding?.riskTolerance]} />
+          <InfoPill label="Experience Level" value={labelMap.experience[user?.onboarding?.investmentExperience]} />
+          <InfoPill label="Timeline" value={labelMap.timeline[user?.onboarding?.investmentTimeline]} />
+        </div>
+      ) : (
+        <form onSubmit={onSave} className="space-y-6">
+          {/* Risk */}
+          <label>Risk Tolerance</label>
+          <select value={form.riskTolerance} onChange={onChange('riskTolerance')} className="input-field">
+            <option value="conservative">Conservative</option>
+            <option value="moderate">Moderate</option>
+            <option value="aggressive">Aggressive</option>
+          </select>
+
+          {/* Experience */}
+          <label>Experience</label>
+          <select value={form.investmentExperience} onChange={onChange('investmentExperience')} className="input-field">
+            <option value="beginner">Beginner</option>
+            <option value="some">Some</option>
+            <option value="experienced">Experienced</option>
+            <option value="expert">Expert</option>
+          </select>
+
+          {/* Timeline */}
+          <label>Timeline</label>
+          <select value={form.investmentTimeline} onChange={onChange('investmentTimeline')} className="input-field">
+            <option value="short">Short-term</option>
+            <option value="medium">Medium-term</option>
+            <option value="long">Long-term</option>
+            <option value="retirement">Retirement</option>
+          </select>
+
+          <div className="flex gap-3 mt-4">
+            <button type="submit" disabled={saving} className="btn-primary flex items-center disabled:opacity-50">
+              {saving ? <LoadingSpinner size="small" /> : (<><Save className="w-4 h-4 mr-2" /> Save</>)}
+            </button>
+            <button type="button" onClick={cancel} className="btn-secondary flex items-center">
+              <X className="w-4 h-4 mr-2" /> Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+};
+
+
+/* Small display helper used above */
+const InfoPill = ({ label, value }) => (
+  <div className="p-3 bg-gray-50 rounded-lg">
+    <span className="text-sm font-medium text-gray-700">{label}:</span>
+    <span className="ml-2 text-sm text-gray-900">{value}</span>
   </div>
 );
+
+/* Pretty label maps */
+const labelMap = {
+  risk: {
+    conservative: 'Conservative',
+    moderate: 'Moderate',
+    aggressive: 'Aggressive',
+  },
+  experience: {
+    beginner: 'Beginner',
+    some: 'Some Experience',
+    experienced: 'Experienced',
+    expert: 'Expert',
+  },
+  timeline: {
+    short: 'Short-term',
+    medium: 'Medium-term',
+    long: 'Long-term',
+    retirement: 'Retirement',
+  },
+};
 
 // Notifications Tab Component
 const NotificationsTab = ({ user }) => (
@@ -595,6 +691,20 @@ const ProfileField = ({ icon: Icon, label, value }) => (
     </div>
   </div>
 );
+
+/* helpers (put these near your other helpers in the file) */
+function valueStr(n) {
+  if (n === null || n === undefined) return '';
+  return String(n);
+}
+function toNumber(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+function clampNonNeg(v) {
+  const n = toNumber(v);
+  return n < 0 ? 0 : n;
+}
 
 const FinancialMetricCard = ({ title, value, change }) => (
   <div className="p-4 border border-gray-200 rounded-lg">
