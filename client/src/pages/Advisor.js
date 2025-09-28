@@ -145,7 +145,7 @@ const Advisor = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              AI Financial Advisor 🤖
+              AI Financial Advisor
             </h1>
             <p className="mt-1 text-gray-600">
               Get personalized financial advice powered by AI
@@ -156,7 +156,7 @@ const Advisor = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Chat Section */}
           <div className="lg:col-span-3">
-            <div className="card">
+            <div className="border-2 border-black rounded-lg" style={{backgroundColor: '#98B8D6'}}>
               <div className="h-[600px] flex flex-col">
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                   {messages.map((message) => (
@@ -168,10 +168,10 @@ const Advisor = () => {
                   ))}
 
                   {isLoading && (
-                    <div className="flex items-center space-x-2 text-gray-500">
+                    <div className="flex items-center space-x-3 text-black border-2 border-black rounded-lg p-4" style={{backgroundColor: '#E2DBAD'}}>
                       <Bot className="w-5 h-5" />
-                      <LoadingSpinner size="small" />
-                      <span className="text-sm">AI is thinking...</span>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm font-body">AI is analyzing your finances...</span>
                     </div>
                   )}
 
@@ -179,21 +179,21 @@ const Advisor = () => {
                 </div>
 
                 {/* Input */}
-                <div className="border-t border-gray-200 p-6">
-                  <form onSubmit={handleSubmit} className="flex space-x-2">
+                <div className="border-t-2 border-black p-6" style={{backgroundColor: '#CED697'}}>
+                  <form onSubmit={handleSubmit} className="flex space-x-3">
                     <input
                       ref={inputRef}
                       type="text"
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       placeholder="Ask me anything about your finances..."
-                      className="flex-1 input-field"
+                      className="flex-1 px-4 py-3 border-2 border-black rounded-lg font-body focus:outline-none focus:ring-2 focus:ring-black text-black bg-white"
                       disabled={isLoading}
                     />
                     <button
                       type="submit"
                       disabled={isLoading || !inputMessage.trim()}
-                      className="btn-primary px-4 disabled:opacity-50"
+                      className="px-6 py-3 bg-black text-white border-2 border-black rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center font-body"
                     >
                       <Send className="w-4 h-4" />
                     </button>
@@ -205,7 +205,7 @@ const Advisor = () => {
                       <button
                         key={index}
                         onClick={() => handleSuggestionClick(action.text)}
-                        className="inline-flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition-colors"
+                        className="inline-flex items-center px-3 py-2 text-sm bg-white hover:bg-gray-100 border-2 border-black rounded-lg text-black transition-all duration-200 font-body"
                       >
                         <action.icon className="w-4 h-4 mr-2" />
                         {action.text}
@@ -218,22 +218,22 @@ const Advisor = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-8">
-            {/* Visualization */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Visualization - Keep as is but add playful styling */}
             {currentVisualization && (
-              <div className="card">
-                <div className="card-header">
-                  <h3 className="text-lg font-semibold text-gray-900">Visualization</h3>
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-black font-body">Visualization</h3>
                   <div className="flex space-x-2">
                     <button
                       onClick={saveVisualization}
-                      className="p-2 text-gray-600 hover:text-primary-600 rounded transition-colors"
+                      className="p-2 text-black hover:bg-gray-100 rounded-lg transition-colors"
                       title="Save Visualization"
                     >
                       <Save className="w-4 h-4" />
                     </button>
                     <button 
-                      className="p-2 text-gray-600 hover:text-primary-600 rounded transition-colors"
+                      className="p-2 text-black hover:bg-gray-100 rounded-lg transition-colors"
                       title="Download"
                     >
                       <Download className="w-4 h-4" />
@@ -245,11 +245,11 @@ const Advisor = () => {
             )}
 
             {/* AI Insights */}
-            <div className="card">
-              <div className="card-header">
-                <h3 className="text-lg font-semibold text-gray-900">Recent Insights</h3>
-                <span className="text-sm text-gray-500">
-                  AI-generated advice
+            <div className="border-2 border-black rounded-lg p-6" style={{backgroundColor: '#CED697'}}>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-black font-body">Recent Insights</h3>
+                <span className="text-sm text-black font-body">
+                  AI-generated
                 </span>
               </div>
               
@@ -258,12 +258,16 @@ const Advisor = () => {
                   .filter(m => m.type === 'bot' && Array.isArray(m.insights) && m.insights.length > 0)
                   .slice(-3)
                   .map((message, index) => (
-                    <div key={index} className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+                    <div key={index} className="p-4 border-2 border-black rounded-lg bg-white">
                       <div className="space-y-2">
                         {message.insights.map((insight, idx) => (
-                          <div key={idx} className="flex items-start space-x-2">
-                            <div className="w-2 h-2 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
-                            <p className="text-sm text-purple-800">{insight}</p>
+                          <div key={idx} className="flex items-start space-x-3">
+                            <div className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border-2 border-black">
+                              <span className="text-xs font-bold font-body">
+                                {idx + 1}
+                              </span>
+                            </div>
+                            <p className="text-sm text-black leading-relaxed font-body">{insight}</p>
                           </div>
                         ))}
                       </div>
@@ -272,8 +276,11 @@ const Advisor = () => {
                 
                 {messages.filter(m => m.type === 'bot' && Array.isArray(m.insights) && m.insights.length > 0).length === 0 && (
                   <div className="text-center py-8">
-                    <Sparkles className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500 text-sm">Start a conversation to see AI insights</p>
+                    <div className="w-12 h-12 bg-black border-2 border-black rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <p className="text-black text-sm font-body font-medium">Start a conversation to see AI insights</p>
+                    <p className="text-black text-xs mt-1 font-body">Ask about your spending, savings, or investments</p>
                   </div>
                 )}
               </div>
@@ -296,22 +303,31 @@ const MessageBubble = ({ message = {}, onSuggestionClick = () => {} }) => {
   return (
     <div className={`flex ${isBot ? 'justify-start' : 'justify-end'}`}>
       <div className={`max-w-xs lg:max-w-md ${isBot ? 'order-2' : 'order-1'}`}>
-        <div className={`px-4 py-2 rounded-2xl ${isBot ? 'bg-gray-100 text-gray-800' : 'bg-primary-600 text-white'}`}>
-          <p className="text-sm whitespace-pre-wrap">{content}</p>
+        <div className={`px-4 py-3 rounded-lg border-2 border-black font-body ${
+          isBot 
+            ? 'bg-white text-black' 
+            : 'bg-black text-white'
+        }`}>
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">{content}</p>
 
           {insights.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-200">
-              <p className="text-xs font-medium mb-1">Key Insights:</p>
-              {insights.map((insight, index) => (
-                <p key={index} className="text-xs opacity-90">• {insight}</p>
-              ))}
+            <div className="mt-3 pt-3 border-t-2 border-black">
+              <p className="text-xs font-bold mb-2">Key Insights:</p>
+              <div className="space-y-1">
+                {insights.map((insight, index) => (
+                  <p key={index} className="text-xs flex items-start">
+                    <span className="mr-2 font-bold">•</span>
+                    {insight}
+                  </p>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
         {suggestions.length > 0 && (
           <div className="mt-3 space-y-2">
-            <p className="text-xs font-medium mb-2 opacity-75">Recommended Actions:</p>
+            <p className="text-xs font-bold text-black mb-2 font-body">Recommended Actions:</p>
             {suggestions.map((suggestion, index) => {
               const suggestionText = typeof suggestion === 'string' ? suggestion : suggestion.title || suggestion.description || '';
               const suggestionClick = suggestionText.includes(':')
@@ -322,7 +338,7 @@ const MessageBubble = ({ message = {}, onSuggestionClick = () => {} }) => {
                 <button
                   key={index}
                   onClick={() => onSuggestionClick(suggestionClick)}
-                  className="block w-full text-left px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="block w-full text-left px-3 py-2 text-xs bg-white border-2 border-black rounded-lg hover:bg-gray-100 transition-all duration-200 font-body"
                 >
                   {suggestionText}
                 </button>
@@ -332,13 +348,14 @@ const MessageBubble = ({ message = {}, onSuggestionClick = () => {} }) => {
         )}
 
         {followUpQuestions.length > 0 && (
-          <div className="mt-3 space-y-1">
-            <p className="text-xs font-medium mb-2 opacity-75">Follow-up Questions:</p>
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-bold text-black mb-2 font-body">Follow-up Questions:</p>
             {followUpQuestions.map((question, index) => (
               <button
                 key={index}
                 onClick={() => onSuggestionClick(question)}
-                className="block w-full text-left px-3 py-1 text-xs bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-blue-800"
+                className="block w-full text-left px-3 py-2 text-xs border-2 border-black rounded-lg hover:bg-white transition-all duration-200 text-black font-body"
+                style={{backgroundColor: '#E2DBAD'}}
               >
                 {question}
               </button>
@@ -346,14 +363,18 @@ const MessageBubble = ({ message = {}, onSuggestionClick = () => {} }) => {
           </div>
         )}
 
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-black mt-2 font-body">
           {message.timestamp?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || ''}
         </p>
       </div>
 
-      <div className={`flex-shrink-0 ${isBot ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isBot ? 'bg-gradient-to-r from-purple-500 to-indigo-600' : 'bg-primary-600'}`}>
-          {isBot ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-white" />}
+      <div className={`flex-shrink-0 ${isBot ? 'order-1 mr-3' : 'order-2 ml-3'}`}>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 border-black ${
+          isBot 
+            ? 'bg-white text-black' 
+            : 'bg-black text-white'
+        }`}>
+          {isBot ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
         </div>
       </div>
     </div>
