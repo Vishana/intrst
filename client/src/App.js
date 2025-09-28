@@ -14,6 +14,7 @@ import Onboarding from './pages/auth/Onboarding';
 import SimpleDashboard from './pages/SimpleDashboard';
 import Advisor from './pages/Advisor';
 import BettingSimple from './pages/BettingSimple';
+import Integrations from './pages/Integrations';
 // import Profile from './pages/Profile';
 
 function App() {
@@ -113,6 +114,21 @@ function AppRoutes() {
             user ? (
               isOnboardingComplete(user) ? (
                 <BettingSimple />
+              ) : (
+                <Navigate to="/onboarding" replace />
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
+        
+        <Route 
+          path="/integrations" 
+          element={
+            user ? (
+              isOnboardingComplete(user) ? (
+                <Integrations />
               ) : (
                 <Navigate to="/onboarding" replace />
               )

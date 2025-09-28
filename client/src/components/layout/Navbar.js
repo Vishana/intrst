@@ -7,7 +7,8 @@ import {
   User, 
   LogOut,
   Menu,
-  X
+  X,
+  LinkIcon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
@@ -38,6 +39,11 @@ const Navbar = () => {
       name: 'Betting',
       path: '/betting',
       icon: Target
+    },
+    {
+      name: 'Integrations',
+      path: '/integrations',
+      icon: LinkIcon
     }
   ];
 
