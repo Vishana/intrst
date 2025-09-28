@@ -622,7 +622,7 @@ const Integrations = () => {
           
           {/* Primary Visualization Panel (Left - 3/4 width) */}
           <div className="lg:col-span-3">
-            <div className="h-[500px] border-2 border-black rounded-lg flex flex-col" style={{backgroundColor: '#98B8D6'}}>
+            <div className="min-h-[500px] border-2 border-black rounded-lg flex flex-col" style={{backgroundColor: '#98B8D6'}}>
               <div className="flex items-center justify-between p-4 border-b border-black">
                 <h2 className="text-xl font-bold text-black">
                   Financial Integrations Hub

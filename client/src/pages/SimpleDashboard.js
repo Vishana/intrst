@@ -22,12 +22,12 @@ const SimpleDashboard = () => {
           
           {/* Primary Visualization Panel (Left - 3/4 width) */}
           <div className="lg:col-span-3">
-            {/* Chart Container with Fixed Height */}
-            <div className="h-[500px] border-2 border-black rounded-lg flex flex-col" style={{backgroundColor: '#98B8D6'}}>
+            {/* Chart Container with Dynamic Height */}
+            <div className="min-h-[500px] border-2 border-black rounded-lg flex flex-col" style={{backgroundColor: '#98B8D6'}}>
               {/* Chart Content - Life Path Visualization */}
               <div className="flex-1">
                 {loading ? (
-                  <div className="h-full flex items-center justify-center">
+                  <div className="h-[500px] flex items-center justify-center">
                     <div className="text-center">
                       <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
                       <p className="font-medium text-sm font-body text-black">Loading dashboard...</p>
