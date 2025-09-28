@@ -6,6 +6,8 @@ const { RunnableSequence } = require('@langchain/core/runnables');
 // ✅ Lightweight charting with canvas
 const { createCanvas } = require('canvas');
 const Chart = require('chart.js/auto');
+// ✅ Database service for real user data
+const DatabaseService = require('./dataService');
 
 class AIFinancialAdvisor {
   constructor() {
@@ -486,6 +488,79 @@ Return ONLY a JSON array with NO Markdown fences of objects like:
     }
   }
 
+  /**
+   * ✅ NEW: Format real transaction data for charts
+   */
+  async formatRealTransactionData(transactions) {
+    console.log('📊 Formatting real transaction data for chart visualization...');
+    try {
+      if (!transactions || transactions.length === 0) {
+        console.log('No transactions to format');
+        return [];
+      }
+
+      // Group transactions by category for spending analysis
+      const categoryTotals = {};
+      let totalExpenses = 0;
+
+      transactions.forEach(transaction => {
+        // Only process expenses (negative amounts or expense type)
+        if (transaction.type === 'expense' || transaction.amount < 0) {
+          const category = transaction.category?.primary || 'other';
+          const amount = Math.abs(transaction.amount);
+          
+          if (!categoryTotals[category]) {
+            categoryTotals[category] = 0;
+          }
+          categoryTotals[category] += amount;
+          totalExpenses += amount;
+        }
+      });
+
+      // Convert to chart data format and sort by amount
+      const chartData = Object.entries(categoryTotals)
+        .map(([category, amount]) => ({
+          label: this.formatCategoryName(category),
+          value: amount,
+          percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10); // Top 10 categories
+
+      console.log(`✅ Formatted ${chartData.length} spending categories from ${transactions.length} transactions`);
+      return chartData;
+
+    } catch (error) {
+      console.error('❌ Real transaction data formatting failed:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * ✅ NEW: Format category names for display
+   */
+  formatCategoryName(category) {
+    const categoryMap = {
+      'food': 'Food & Dining',
+      'transportation': 'Transportation',
+      'housing': 'Housing',
+      'utilities': 'Utilities',
+      'healthcare': 'Healthcare',
+      'entertainment': 'Entertainment',
+      'shopping': 'Shopping',
+      'education': 'Education',
+      'subscription': 'Subscriptions',
+      'debt_payment': 'Debt Payment',
+      'insurance': 'Insurance',
+      'travel': 'Travel',
+      'charity': 'Charity',
+      'investment': 'Investment',
+      'savings': 'Savings',
+      'other': 'Other'
+    };
+    return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1);
+  }
+
   async generateFinancialAdvice(userProfile, financialData = {}, userQuery = '') {
     const queryText = typeof userQuery === 'string'
       ? userQuery
@@ -493,23 +568,31 @@ Return ONLY a JSON array with NO Markdown fences of objects like:
 
     console.log('💬 Generating financial advice for query:', queryText);
 
-  try {
-      // ✅ Fetch real data from MongoDB
-      const userId = userProfile?.id;
-      const [transactions, goals, bets] = await Promise.all([
-        Transaction.find({ userId }),
-        Goal.find({ userId }),
-        Bet.find({ userId })
-      ]);
+    try {
+      // ✅ NEW: Fetch real data from MongoDB
+      let realFinancialData = financialData;
+      
+      if (userProfile?.id) {
+        console.log('📊 Fetching real user data from MongoDB...');
+        try {
+          const userData = await DatabaseService.getUserFinancialData(userProfile.id);
+          realFinancialData = {
+            ...financialData,
+            ...userData,
+            // Keep any passed-in data but prioritize real data
+            recentTransactions: userData.recentTransactions || financialData.recentTransactions || [],
+            currentGoals: userData.currentGoals || financialData.currentGoals || [],
+            bets: userData.bets || financialData.bets || [],
+            userProfile: userData.userProfile || userProfile
+          };
+          console.log(`✅ Real data loaded: ${userData.recentTransactions.length} transactions, ${userData.currentGoals.length} goals`);
+        } catch (dataError) {
+          console.warn('⚠️ Failed to fetch real data, using provided data:', dataError.message);
+          realFinancialData = financialData;
+        }
+      }
 
-      // Merge into financialData
-      financialData = {
-        ...financialData,
-        recentTransactions: transactions,
-        currentGoals: goals,
-        bets: bets,
-      };
-      const summarized = await this.summarizeTransactions(financialData.recentTransactions || []);
+      const summarized = await this.summarizeTransactions(realFinancialData.recentTransactions || []);
       
       // ✅ Fixed: This was already correct but added error handling
       const relevantAgents = await this.getRelevantAgents(queryText);
@@ -530,12 +613,12 @@ Return ONLY a JSON array with NO Markdown fences of objects like:
       if (relevantAgents.includes('goalOptimization')) {
         promises.push(this.optimizeGoals(
           userProfile, 
-          financialData.currentGoals || [], 
-          financialData.goalProgress || {}
+          realFinancialData.currentGoals || [], 
+          realFinancialData.goalProgress || {}
         ));
       }
       if (relevantAgents.includes('budgetPlanner')) {
-        promises.push(this.generateBudgetPlan(userProfile, financialData.preferences || {}));
+        promises.push(this.generateBudgetPlan(userProfile, realFinancialData.preferences || {}));
       }
 
       // Execute relevant agents in parallel
@@ -560,18 +643,24 @@ Return ONLY a JSON array with NO Markdown fences of objects like:
           : {};
       }
 
-      // Chart generation
-if (relevantAgents.includes('chartSelector')) {
-  chartRecommendation = await this.selectChart(summarized, spendingInsights);
-  formattedChartData = await this.formatChartData(summarized);
+      // Chart generation with real data preference
+      if (relevantAgents.includes('chartSelector')) {
+        chartRecommendation = await this.selectChart(summarized, spendingInsights);
+        
+        // ✅ NEW: Try to get real chart data first
+        if (realFinancialData.recentTransactions && realFinancialData.recentTransactions.length > 0) {
+          formattedChartData = await this.formatRealTransactionData(realFinancialData.recentTransactions);
+          console.log('📊 Using real transaction data for chart:', formattedChartData.length, 'data points');
+        } else {
+          formattedChartData = await this.formatChartData(summarized);
+        }
 
-  // ✅ Fallback: Generate chart data via Gemini if none exists
-if (!formattedChartData || formattedChartData.length === 0) {
-  console.log('faking some data');
-  formattedChartData = await this.generateFakeChartData(userProfile, financialData, userQuery, chartRecommendation.type);
-}
-
-}
+        // Fallback: Generate chart data via AI if none exists
+        if (!formattedChartData || formattedChartData.length === 0) {
+          console.log('🤖 Generating AI fallback chart data...');
+          formattedChartData = await this.generateFakeChartData(userProfile, realFinancialData, userQuery, chartRecommendation.type);
+        }
+      }
 
       console.log('📌 Invoking FinancialAdvisor agent with all data...');
 
@@ -596,44 +685,61 @@ if (!formattedChartData || formattedChartData.length === 0) {
 
       console.log('✅ Financial advice generated');
 
-      // Generate chart image if applicable
-// Generate interactive chart data for frontend rendering
-if (chartRecommendation && Array.isArray(formattedChartData) && formattedChartData.length > 0) {
-  try {
-    result.visualization = {
-      type: chartRecommendation.type || 'pie',
-      title: chartRecommendation.title || chartRecommendation.description || 'Financial Chart',
-      data: {
-        labels: formattedChartData.map(d => d.label || 'Unknown'),
-        datasets: [{
-          label: 'Amount ($)',
-          data: formattedChartData.map(d => parseFloat(d.value) || 0),
-          backgroundColor: [
-            '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
-            '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
-          ],
-          borderColor: '#FFFFFF',
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom'
+      // Generate interactive chart data for frontend rendering
+      if (chartRecommendation && Array.isArray(formattedChartData) && formattedChartData.length > 0) {
+        try {
+          result.visualization = {
+            type: chartRecommendation.type || 'pie',
+            title: chartRecommendation.title || chartRecommendation.description || 'Financial Chart',
+            data: {
+              labels: formattedChartData.map(d => d.label || 'Unknown'),
+              datasets: [{
+                label: 'Amount ($)',
+                data: formattedChartData.map(d => parseFloat(d.value) || 0),
+                backgroundColor: [
+                  '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+                  '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+                ],
+                borderColor: '#FFFFFF',
+                borderWidth: 2
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'bottom'
+                }
+              }
+            },
+            recommended: true,
+            dataSource: realFinancialData.recentTransactions && realFinancialData.recentTransactions.length > 0 ? 'real' : 'generated'
+          };
+          console.log('📊 Chart data created from', result.visualization.dataSource, 'data:', formattedChartData.length, 'points');
+          
+          // ✅ NEW: Save visualization to database if real data was used
+          if (result.visualization.dataSource === 'real' && userProfile?.id) {
+            try {
+              await DatabaseService.saveVisualization(userProfile.id, {
+                title: result.visualization.title,
+                description: chartRecommendation.description,
+                type: result.visualization.type,
+                data: result.visualization.data,
+                prompt: queryText,
+                insights: result.insights
+              });
+              console.log('💾 Visualization saved to database');
+            } catch (saveError) {
+              console.warn('⚠️ Failed to save visualization:', saveError.message);
+            }
           }
+        } catch (err) {
+          console.warn('Chart data preparation failed:', err.message);
         }
-      },
-      recommended: true
-    };
-    console.log('Chart data created:', JSON.stringify(result.visualization, null, 2));
-  } catch (err) {
-    console.warn('Chart data preparation failed:', err.message);
-  }
-} else {
-  console.log('No chart data available:', { chartRecommendation, formattedChartData });
-}
+      } else {
+        console.log('No chart data available:', { chartRecommendation, formattedChartData });
+      }
       return result;
     } catch (error) {
       console.error('❌ Financial advice generation failed:', error.message);

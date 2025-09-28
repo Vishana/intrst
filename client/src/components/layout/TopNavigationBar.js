@@ -40,7 +40,7 @@ const TopNavigationBar = () => {
             <div className="w-8 h-8 text-white rounded-lg flex items-center justify-center border-2 border-black" style={{backgroundColor: '#8A9253'}}>
               <span className="font-bold text-sm font-title">I</span>
             </div>
-            <span className="text-2xl font-black font-title text-black">Take Ctrl.</span>
+            <span className="text-2xl font-black font-title text-black">intrst.</span>
           </Link>
           
           {/* Center - Navigation Items */}
@@ -86,9 +86,13 @@ const TopNavigationBar = () => {
               <LogOut className="w-4 h-4" />
             </button>
             
-            <div className="w-8 h-8 text-white rounded-full flex items-center justify-center font-bold border-2 border-black" style={{backgroundColor: '#98B8D6'}}>
+            <Link 
+              to="/profile" 
+              className="w-8 h-8 text-white rounded-full flex items-center justify-center font-bold border-2 border-black transition-colors hover:opacity-80" 
+              style={{backgroundColor: '#98B8D6'}}
+            >
               {user?.firstName?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
+            </Link>
           </div>
         </div>
       </div>

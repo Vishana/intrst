@@ -142,92 +142,100 @@ const Advisor = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8 flex items-center space-x-3 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
-            <Bot className="w-6 h-6 text-white" />
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">AI Financial Advisor</h1>
-            <p className="text-gray-600">Get personalized financial advice powered by AI</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              AI Financial Advisor 🤖
+            </h1>
+            <p className="mt-1 text-gray-600">
+              Get personalized financial advice powered by AI
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Chat Section */}
-          <div className="lg:col-span-2">
-            <div className="card h-[600px] flex flex-col">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message) => (
-                  <MessageBubble
-                    key={message.id}
-                    message={message}
-                    onSuggestionClick={handleSuggestionClick}
-                  />
-                ))}
-
-                {isLoading && (
-                  <div className="flex items-center space-x-2 text-gray-500">
-                    <Bot className="w-5 h-5" />
-                    <LoadingSpinner size="small" />
-                    <span className="text-sm">AI is thinking...</span>
-                  </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input */}
-              <div className="border-t border-gray-200 p-4">
-                <form onSubmit={handleSubmit} className="flex space-x-2">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Ask me anything about your finances..."
-                    className="flex-1 input-field"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLoading || !inputMessage.trim()}
-                    className="btn-primary px-4 disabled:opacity-50"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-
-                {/* Quick Actions */}
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {quickActions.map((action, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleSuggestionClick(action.text)}
-                      className="inline-flex items-center px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
-                    >
-                      <action.icon className="w-3 h-3 mr-1" />
-                      {action.text}
-                    </button>
+          <div className="lg:col-span-3">
+            <div className="card">
+              <div className="h-[600px] flex flex-col">
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  {messages.map((message) => (
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      onSuggestionClick={handleSuggestionClick}
+                    />
                   ))}
+
+                  {isLoading && (
+                    <div className="flex items-center space-x-2 text-gray-500">
+                      <Bot className="w-5 h-5" />
+                      <LoadingSpinner size="small" />
+                      <span className="text-sm">AI is thinking...</span>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                <div className="border-t border-gray-200 p-6">
+                  <form onSubmit={handleSubmit} className="flex space-x-2">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      placeholder="Ask me anything about your finances..."
+                      className="flex-1 input-field"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="submit"
+                      disabled={isLoading || !inputMessage.trim()}
+                      className="btn-primary px-4 disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+
+                  {/* Quick Actions */}
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {quickActions.map((action, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestionClick(action.text)}
+                        className="inline-flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition-colors"
+                      >
+                        <action.icon className="w-4 h-4 mr-2" />
+                        {action.text}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Visualization & Tools */}
-          <div className="space-y-6">
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-8">
+            {/* Visualization */}
             {currentVisualization && (
               <div className="card">
-                <div className="flex items-center justify-between mb-4">
+                <div className="card-header">
                   <h3 className="text-lg font-semibold text-gray-900">Visualization</h3>
                   <div className="flex space-x-2">
                     <button
                       onClick={saveVisualization}
-                      className="p-2 text-gray-600 hover:text-primary-600 rounded"
+                      className="p-2 text-gray-600 hover:text-primary-600 rounded transition-colors"
+                      title="Save Visualization"
                     >
                       <Save className="w-4 h-4" />
                     </button>
-                    <button className="p-2 text-gray-600 hover:text-primary-600 rounded">
+                    <button 
+                      className="p-2 text-gray-600 hover:text-primary-600 rounded transition-colors"
+                      title="Download"
+                    >
                       <Download className="w-4 h-4" />
                     </button>
                   </div>
@@ -238,38 +246,36 @@ const Advisor = () => {
 
             {/* AI Insights */}
             <div className="card">
-              <div className="flex items-center space-x-2 mb-4">
-                <Sparkles className="w-5 h-5 text-purple-600" />
+              <div className="card-header">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Insights</h3>
+                <span className="text-sm text-gray-500">
+                  AI-generated advice
+                </span>
               </div>
-              <div className="space-y-3">
+              
+              <div className="space-y-4">
                 {messages
-                  .filter(m => m.type === 'bot' && Array.isArray(m.insights))
+                  .filter(m => m.type === 'bot' && Array.isArray(m.insights) && m.insights.length > 0)
                   .slice(-3)
                   .map((message, index) => (
-                    <div key={index} className="p-3 bg-purple-50 rounded-lg">
-                      {message.insights.map((insight, idx) => (
-                        <p key={idx} className="text-sm text-purple-800">• {insight}</p>
-                      ))}
+                    <div key={index} className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+                      <div className="space-y-2">
+                        {message.insights.map((insight, idx) => (
+                          <div key={idx} className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
+                            <p className="text-sm text-purple-800">{insight}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
-              </div>
-            </div>
-
-            {/* Financial Health Score */}
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Health Score</h3>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">
-                  {user?.financialProfile?.healthScore || 75}
-                </div>
-                <p className="text-sm text-gray-600 mb-4">Good financial health</p>
-                <div className="space-y-2 text-left">
-                  <ScoreItem label="Savings Rate" score={80} />
-                  <ScoreItem label="Debt Management" score={70} />
-                  <ScoreItem label="Budget Adherence" score={75} />
-                  <ScoreItem label="Investment Diversity" score={65} />
-                </div>
+                
+                {messages.filter(m => m.type === 'bot' && Array.isArray(m.insights) && m.insights.length > 0).length === 0 && (
+                  <div className="text-center py-8">
+                    <Sparkles className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm">Start a conversation to see AI insights</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -377,22 +383,6 @@ const VisualizationDisplay = ({ visualization }) => {
     </div>
   );
 };
-
-// ----------------- ScoreItem -----------------
-const ScoreItem = ({ label, score }) => (
-  <div className="flex items-center justify-between">
-    <span className="text-sm text-gray-600">{label}</span>
-    <div className="flex items-center space-x-2">
-      <div className="w-16 bg-gray-200 rounded-full h-2">
-        <div
-          className={`h-2 rounded-full ${score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
-          style={{ width: `${score}%` }}
-        />
-      </div>
-      <span className="text-sm font-medium w-8">{score}</span>
-    </div>
-  </div>
-);
 
 // ----------------- Quick Actions -----------------
 const quickActions = [

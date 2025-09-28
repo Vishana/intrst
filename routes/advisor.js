@@ -1,8 +1,10 @@
 const express = require('express');
 const { auth, requireOnboarding, rateLimitRequests } = require('../middleware/auth');
 const aiAdvisor = require('../services/aiAdvisor');
+const DatabaseService = require('../services/dataService'); // ✅ NEW: Add database service
 const Transaction = require('../models/Transaction');
 const Goal = require('../models/Goal');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -21,23 +23,42 @@ router.post('/chat', auth, requireOnboarding, rateLimitRequests(20, 15 * 60 * 10
     
     console.log(`💬 AI Advisor request from ${req.user.firstName}: "${message}"`);
     
-    // Get additional context if needed
+    // ✅ NEW: Use DatabaseService to get comprehensive user data
     let financialData = context;
     
-    // If context is minimal, get user's recent transactions and goals
-    if (Object.keys(context).length === 0) {
+    try {
+      console.log('📊 Fetching real user data via DatabaseService...');
+      const comprehensiveData = await DatabaseService.getUserFinancialData(req.user._id);
+      
+      financialData = {
+        ...context, // Keep any provided context
+        ...comprehensiveData, // Add real data from database
+        // Ensure userProfile is properly formatted
+        userProfile: {
+          id: req.user._id,
+          firstName: req.user.firstName,
+          lastName: req.user.lastName,
+          email: req.user.email,
+          ...comprehensiveData.userProfile
+        }
+      };
+      
+      console.log(`✅ Real data loaded: ${comprehensiveData.recentTransactions?.length || 0} transactions, ${comprehensiveData.currentGoals?.length || 0} goals`);
+    } catch (dataError) {
+      console.warn('⚠️ Failed to fetch comprehensive data, using basic context:', dataError.message);
+      
+      // Fallback: get minimal data if DatabaseService fails
       try {
         const recentTransactions = await Transaction.find({ userId: req.user._id })
           .sort({ date: -1 })
           .limit(20)
           .select('amount category description date type')
-          .lean(); // ✅ Added lean() for better performance
+          .lean();
           
         const userGoals = await Goal.find({ userId: req.user._id })
           .select('title targetAmount currentAmount targetDate priority status')
-          .lean(); // ✅ Added lean() for better performance
+          .lean();
           
-        // ✅ Fixed: Calculate goal progress data
         const goalProgress = userGoals.reduce((acc, goal) => {
           acc[goal._id] = {
             progress: (goal.currentAmount / goal.targetAmount) * 100,
@@ -49,29 +70,50 @@ router.post('/chat', auth, requireOnboarding, rateLimitRequests(20, 15 * 60 * 10
         }, {});
           
         financialData = {
+          ...context,
           recentTransactions,
           currentGoals: userGoals,
-          goalProgress, // ✅ Added goal progress data
-          preferences: req.user.financialProfile || {}
+          goalProgress,
+          preferences: req.user.financialProfile || {},
+          userProfile: {
+            id: req.user._id,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+            email: req.user.email,
+            financialProfile: req.user.financialProfile,
+            onboarding: req.user.onboarding
+          }
         };
-      } catch (dbError) {
-        console.warn('Could not fetch additional context:', dbError.message);
+      } catch (fallbackError) {
+        console.warn('⚠️ Fallback data fetch also failed:', fallbackError.message);
+        financialData = {
+          ...context,
+          userProfile: {
+            id: req.user._id,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+            email: req.user.email,
+            financialProfile: req.user.financialProfile,
+            onboarding: req.user.onboarding
+          }
+        };
       }
     }
     
-    // ✅ Fixed: Correct function call with proper parameter order
+    // ✅ NEW: Call AI advisor with comprehensive real data
     const aiResponse = await aiAdvisor.generateFinancialAdvice(
-      req.user, // userProfile first
-      financialData, // financialData second  
-      message // userQuery third
+      financialData.userProfile, // userProfile with proper structure
+      financialData, // comprehensive financial data  
+      message // user query
     );
     
-    console.log(`✅ AI response generated`);
+    console.log(`✅ AI response generated with data source: ${aiResponse.visualization?.dataSource || 'none'}`);
     
     res.json({
       ...aiResponse,
       userId: req.user._id,
       query: message,
+      dataSource: aiResponse.visualization?.dataSource || 'generated',
       timestamp: new Date().toISOString()
     });
     
