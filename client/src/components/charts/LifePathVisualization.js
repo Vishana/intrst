@@ -754,7 +754,7 @@ const LifePathVisualization = ({ userId, timeRange }) => {
         <div className="bg-white border-2 border-black rounded-lg p-2" style={{ height: '100%', minHeight: '380px' }}>
           {/* Debug info */}
           <div className="text-xs text-gray-600 mb-2">
-            Debug: Data length: {projectionData.length}, Sample: {JSON.stringify(projectionData[0] || 'No data')}
+            Projection Chart
           </div>
           
           <div style={{ width: '100%', height: '320px' }}>

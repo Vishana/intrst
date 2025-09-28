@@ -26,131 +26,125 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{backgroundColor: '#98B8D6'}}>
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-gradient-to-r from-primary-500 to-primary-700 rounded-xl flex items-center justify-center mb-4">
-            <span className="text-white font-bold text-lg">I</span>
+          <div className="mx-auto h-12 w-12 border-2 border-black rounded-xl flex items-center justify-center mb-4" style={{backgroundColor: '#E2DBAD'}}>
+            <span className="text-black font-bold text-lg font-body">I</span>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold text-black font-body">
             Welcome back to intrst
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-black font-body">
             Sign in to your account to continue your financial journey
           </p>
         </div>
 
         {/* Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-4">
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <SimpleIcon name="mail" size={20} className="text-gray-400" />
+        <div className="border-2 border-black rounded-lg p-6" style={{backgroundColor: '#CED697'}}>
+          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            <div className="space-y-4">
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-black mb-1 font-body">
+                  Email address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <SimpleIcon name="mail" size={20} className="text-gray-600" />
+                  </div>
+                  <input
+                    {...register('email', {
+                      required: 'Email is required',
+                      pattern: {
+                        value: /^\S+@\S+$/i,
+                        message: 'Please enter a valid email address'
+                      }
+                    })}
+                    type="email"
+                    autoComplete="email"
+                    className={`w-full pl-10 px-3 py-2 text-sm border-2 border-black rounded-lg font-body focus:outline-none focus:ring-2 focus:ring-black text-black bg-white ${errors.email ? 'border-red-500' : ''}`}
+                    placeholder="Enter your email"
+                  />
                 </div>
-                <input
-                  {...register('email', {
-                    required: 'Email is required',
-                    pattern: {
-                      value: /^\S+@\S+$/i,
-                      message: 'Please enter a valid email address'
-                    }
-                  })}
-                  type="email"
-                  autoComplete="email"
-                  className={`input-field pl-10 ${errors.email ? 'border-red-500' : ''}`}
-                  placeholder="Enter your email"
-                />
+                {errors.email && (
+                  <p className="mt-1 text-sm text-red-600 font-body">{errors.email.message}</p>
+                )}
               </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
+
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-black mb-1 font-body">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <SimpleIcon name="lock" size={20} className="text-gray-600" />
+                  </div>
+                  <input
+                    {...register('password', {
+                      required: 'Password is required',
+                      minLength: {
+                        value: 6,
+                        message: 'Password must be at least 6 characters'
+                      }
+                    })}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    className={`w-full pl-10 pr-10 px-3 py-2 text-sm border-2 border-black rounded-lg font-body focus:outline-none focus:ring-2 focus:ring-black text-black bg-white ${errors.password ? 'border-red-500' : ''}`}
+                    placeholder="Enter your password"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-600 hover:text-gray-800 focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <SimpleIcon name="eyeOff" size={20} />
+                      ) : (
+                        <SimpleIcon name="eye" size={20} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                {errors.password && (
+                  <p className="mt-1 text-sm text-red-600 font-body">{errors.password.message}</p>
+                )}
+              </div>
             </div>
 
-            {/* Password */}
+            {/* Submit Button */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <SimpleIcon name="lock" size={20} className="text-gray-400" />
-                </div>
-                <input
-                  {...register('password', {
-                    required: 'Password is required',
-                    minLength: {
-                      value: 6,
-                      message: 'Password must be at least 6 characters'
-                    }
-                  })}
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  className={`input-field pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
-                  placeholder="Enter your password"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-gray-400 hover:text-gray-600 focus:outline-none"
-                  >
-                    {showPassword ? (
-                      <SimpleIcon name="eyeOff" size={20} />
-                    ) : (
-                      <SimpleIcon name="eye" size={20} />
-                    )}
-                  </button>
-                </div>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-primary w-full flex justify-center items-center py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <LoadingSpinner size="small" />
-              ) : (
-                'Sign in'
-              )}
-            </button>
-          </div>
-
-          {/* Register Link */}
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link
-                to="/register"
-                className="font-medium text-primary-600 hover:text-primary-500"
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex justify-center items-center py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed px-4 border-2 border-black rounded-lg font-medium text-white bg-black hover:bg-gray-800 transition-colors font-body"
               >
-                Sign up here
-              </Link>
-            </p>
-          </div>
-        </form>
+                {isLoading ? (
+                  <LoadingSpinner size="small" />
+                ) : (
+                  'Sign in'
+                )}
+              </button>
+            </div>
 
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h4 className="text-sm font-medium text-blue-900 mb-2">Demo Credentials</h4>
-          <div className="text-xs text-blue-800">
-            <p>Email: demo@intrst.com</p>
-            <p>Password: demo123</p>
-          </div>
+            {/* Register Link */}
+            <div className="text-center">
+              <p className="text-sm text-black font-body">
+                Don't have an account?{' '}
+                <Link
+                  to="/register"
+                  className="font-medium text-black underline hover:no-underline font-body"
+                >
+                  Sign up here
+                </Link>
+              </p>
+            </div>
+          </form>
         </div>
+
       </div>
     </div>
   );
