@@ -1,57 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Target,
-  Trophy,
-  Users,
+import { useAuth } from '../context/AuthContext';
+import { 
+  Target, 
+  TrendingUp, 
+  TrendingDown, 
   DollarSign,
+  Trophy,
+  Eye,
+  EyeOff,
+  BarChart3,
   Calendar,
-  TrendingUp,
-  Plus,
+  Clock,
+  Award,
+  Activity,
+  Users,
+  Fire,
   Crown,
   Medal,
-  Clock,
-  Fire
+  Plus,
+  CheckCircle,
+  AlertCircle,
+  CreditCard,
+  X
 } from 'lucide-react';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const Betting = () => {
   const { user } = useAuth();
-  const [bets, setBets] = useState([]);
-  const [activeBets, setActiveBets] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
+  const [loading, setLoading] = useState(false);
+  const [showAmounts, setShowAmounts] = useState(true);
+  const [timeRange, setTimeRange] = useState('30d');
+  const [selectedView, setSelectedView] = useState('overview');
   const [showCreateBet, setShowCreateBet] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  
+  // Betting-specific state
+  const [activeBets, setActiveBets] = useState([]);
+  const [bettingHistory, setBettingHistory] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [bettingStats, setBettingStats] = useState({
+    totalWagered: 2500,
+    totalWon: 3100,
+    winRate: 68,
+    activeBets: 5,
+    biggestWin: 850,
+    currentStreak: 3
+  });
 
-  useEffect(() => {
-    fetchBettingData();
-  }, []);
-
-  const fetchBettingData = async () => {
-    try {
-      setLoading(true);
-      const [betsRes, leaderboardRes] = await Promise.all([
-        axios.get('/api/bets/my-bets'),
-        axios.get('/api/bets/leaderboard')
-      ]);
-      
-      setBets(betsRes.data.bets || []);
-      setActiveBets(betsRes.data.bets?.filter(bet => bet.status === 'active') || []);
-      setLeaderboard(leaderboardRes.data.leaderboard || []);
-    } catch (error) {
-      console.error('Failed to fetch betting data:', error);
-      // Set sample data for demo
-      setBets(sampleBets);
-      setActiveBets(sampleBets.filter(bet => bet.status === 'active'));
-      setLeaderboard(sampleLeaderboard);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const viewOptions = [
+    { id: 'overview', label: 'Overview', icon: Target },
+    { id: 'active', label: 'Active Bets', icon: Activity },
+    { id: 'leaderboard', label: 'Leaderboard', icon: Crown },
+    { id: 'history', label: 'History', icon: BarChart3 }
+  ];
 
   const formatCurrency = (amount) => {
+    if (!showAmounts) return '***';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -60,210 +65,366 @@ const Betting = () => {
     }).format(amount);
   };
 
-  const getProgressPercent = (bet) => {
-    if (!bet.targetValue || !bet.currentValue) return 0;
-    return Math.min(100, (bet.currentValue / bet.targetValue) * 100);
+  // Mock data initialization
+  useEffect(() => {
+    fetchBettingData();
+  }, []);
+
+  const fetchBettingData = async () => {
+    try {
+      setLoading(true);
+      const [betsRes, analyticsRes] = await Promise.all([
+        axios.get('/api/bets/my-bets?status=active'),
+        axios.get('/api/bets/analytics/overview')
+      ]);
+      
+      setActiveBets(betsRes.data.bets || []);
+      setBettingStats({
+        ...bettingStats,
+        totalWagered: analyticsRes.data.totalStaked || bettingStats.totalWagered,
+        totalWon: analyticsRes.data.totalWon || bettingStats.totalWon,
+        winRate: analyticsRes.data.winRate || bettingStats.winRate,
+        activeBets: (betsRes.data.bets || []).length
+      });
+      
+    } catch (error) {
+      console.error('Failed to fetch betting data:', error);
+      // Fall back to mock data
+      const mockActiveBets = [
+        {
+          id: 1,
+          title: 'Emergency Fund Challenge',
+          description: 'Save $5,000 for emergency fund',
+          wager: 150,
+          potentialPayout: 285,
+          progress: 64,
+          status: 'active',
+          expiresAt: '2025-02-15T23:59:59Z'
+        },
+        {
+          id: 2,
+          title: 'No Dining Out February',
+          description: 'Avoid restaurant spending for 30 days',
+          wager: 100,
+          potentialPayout: 180,
+          progress: 23,
+          status: 'active',
+          expiresAt: '2025-02-28T23:59:59Z'
+        },
+        {
+          id: 3,
+          title: 'Investment Goal',
+          description: 'Increase portfolio by 15% this quarter',
+          wager: 200,
+          potentialPayout: 350,
+          progress: 87,
+          status: 'winning',
+          expiresAt: '2025-03-31T23:59:59Z'
+        }
+      ];
+
+      const mockLeaderboard = [
+        { id: 1, name: 'Sarah Chen', points: 1250, wins: 12 },
+        { id: 2, name: 'Mike Johnson', points: 980, wins: 9 },
+        { id: 3, name: 'Emma Davis', points: 750, wins: 8 },
+        { id: 4, name: 'You', points: 520, wins: 5 },
+        { id: 5, name: 'Alex Kim', points: 480, wins: 6 }
+      ];
+
+      setActiveBets(mockActiveBets);
+      setLeaderboard(mockLeaderboard);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getDaysRemaining = (endDate) => {
-    const now = new Date();
-    const end = new Date(endDate);
-    const diffTime = end - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="large" text="Loading your challenges..." />
-      </div>
-    );
-  }
+  const BettingVisualization = () => (
+    <div className="flex-1 p-6">
+      {selectedView === 'overview' && (
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <Target className="w-16 h-16 mx-auto mb-4 text-black" />
+            <h3 className="text-2xl font-bold text-black mb-2 font-title">Financial Betting Overview</h3>
+            <p className="text-black mb-6 font-body">Track your financial challenges and competitions</p>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6 max-w-md mx-auto">
+              <div className="bg-white bg-opacity-20 rounded-lg p-3 border border-black">
+                <div className="text-xl font-bold text-black font-title">{bettingStats.winRate}%</div>
+                <div className="text-sm text-black font-body">Win Rate</div>
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-lg p-3 border border-black">
+                <div className="text-xl font-bold text-black font-title">{formatCurrency(bettingStats.totalWon - bettingStats.totalWagered)}</div>
+                <div className="text-sm text-black font-body">Net Profit</div>
+              </div>
+            </div>
+            
+            <div className="border-t border-black pt-4 max-w-lg mx-auto">
+              <div className="flex items-center gap-2 mb-2 justify-center">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm text-black font-medium font-body">AI Analysis</span>
+              </div>
+              <p className="text-sm text-black font-body">
+                Your {bettingStats.winRate}% win rate is excellent! Consider increasing stakes on high-confidence bets 
+                while maintaining disciplined risk management.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {selectedView === 'active' && (
+        <div className="h-full overflow-y-auto">
+          <h3 className="text-lg font-bold text-black mb-4 font-title">Active Challenges</h3>
+          {activeBets.length === 0 ? (
+            <div className="text-center py-8">
+              <Target className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <p className="text-black font-body">No active bets yet</p>
+              <p className="text-xs text-black mt-1 font-body">Create your first challenge to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {activeBets.map((bet) => {
+                // Handle both API data and mock data structure
+                const betId = bet._id || bet.id;
+                const title = bet.title;
+                const description = bet.description;
+                const stakeAmount = bet.stakeAmount || bet.wager;
+                const targetValue = bet.targetValue;
+                const currentValue = bet.currentValue || 0;
+                const progress = targetValue ? Math.min(100, (currentValue / targetValue) * 100) : (bet.progress || 0);
+                const status = bet.status;
+                const endDate = bet.endDate || bet.expiresAt;
+                const daysLeft = endDate ? Math.max(0, Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
+                
+                return (
+                  <div key={betId} className="bg-white bg-opacity-20 rounded-lg p-3 border border-black">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-bold text-black text-sm font-title">{title}</h4>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium font-body ${
+                        status === 'winning' || (progress >= 75) ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {status === 'winning' || (progress >= 75) ? 'On Track' : 'Active'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-black mb-2 font-body">{description}</p>
+                    
+                    {/* Progress section */}
+                    {targetValue && (
+                      <div className="flex items-center justify-between text-xs text-black font-body mb-2">
+                        <span>${currentValue} / ${targetValue}</span>
+                        <span>{daysLeft} days left</span>
+                      </div>
+                    )}
+                    
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                      <div
+                        className="bg-black h-2 rounded-full transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-between text-xs text-black font-body">
+                      <span>Stake: ${stakeAmount}</span>
+                      <span>Progress: {Math.round(progress)}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {selectedView === 'leaderboard' && (
+        <div className="h-full overflow-y-auto">
+          <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2 font-title">
+            <Crown className="w-5 h-5" />
+            Leaderboard
+          </h3>
+          <div className="space-y-2">
+            {leaderboard.map((player, index) => (
+              <div 
+                key={player.id} 
+                className={`flex items-center justify-between p-3 rounded-lg border ${
+                  player.name === 'You' 
+                    ? 'bg-yellow-100 border-yellow-300' 
+                    : 'bg-white bg-opacity-20 border-black'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    {index < 3 ? (
+                      index === 0 ? <Crown className="w-4 h-4 text-yellow-500" /> :
+                      <Medal className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      <span className="text-sm font-bold text-black font-title">#{index + 1}</span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-black font-title">{player.name}</div>
+                    <div className="text-xs text-black font-body">{player.wins} wins</div>
+                  </div>
+                </div>
+                <div className="text-sm font-bold text-black font-title">{player.points}pts</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {selectedView === 'history' && (
+        <div className="h-full overflow-y-auto">
+          <h3 className="text-lg font-bold text-black mb-4 font-title">Betting History</h3>
+          <div className="space-y-2">
+            <div className="bg-white bg-opacity-20 rounded-lg p-3 border border-black">
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-bold text-black font-title">Savings Challenge - Won</div>
+                  <div className="text-xs text-black font-body">Completed Jan 2025</div>
+                </div>
+                <div className="text-sm font-bold text-green-600 font-title">{formatCurrency(180)}</div>
+              </div>
+            </div>
+            <div className="bg-white bg-opacity-20 rounded-lg p-3 border border-black">
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-bold text-black font-title">Investment Goal - Lost</div>
+                  <div className="text-xs text-black font-body">Failed Dec 2024</div>
+                </div>
+                <div className="text-sm font-bold text-red-600 font-title">-{formatCurrency(75)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <Target className="w-8 h-8 mr-3 text-primary-600" />
-              Financial Challenges
-            </h1>
-            <p className="mt-1 text-gray-600">
-              Gamify your finances and compete with others to reach your goals
-            </p>
-          </div>
+    <div className="min-h-screen bg-white">
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
-          <button
-            onClick={() => setShowCreateBet(true)}
-            className="mt-4 sm:mt-0 btn-primary flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Challenge
-          </button>
-        </div>
+          {/* Primary Visualization Panel (Left - 3/4 width) */}
+          <div className="lg:col-span-3">
+            <div className="h-[500px] border-2 border-black rounded-lg flex flex-col" style={{backgroundColor: '#98B8D6'}}>
+              <div className="flex-1">
+                {loading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                      <p className="font-medium text-sm font-body text-black">Loading betting data...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <BettingVisualization />
+                )}
+              </div>
+            </div>
+          </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatsCard
-            title="Active Challenges"
-            value={activeBets.length}
-            icon={Target}
-            color="primary"
-          />
-          <StatsCard
-            title="Total Winnings"
-            value={formatCurrency(user?.gamification?.totalWinnings || 0)}
-            icon={Trophy}
-            color="success"
-          />
-          <StatsCard
-            title="Success Rate"
-            value={`${user?.gamification?.successRate || 0}%`}
-            icon={TrendingUp}
-            color="warning"
-          />
-          <StatsCard
-            title="Current Streak"
-            value={`${user?.gamification?.currentStreak || 0} days`}
-            icon={Fire}
-            color="danger"
-          />
-        </div>
+          {/* Secondary Control Panel (Right - 1/4 width) */}
+          <div className="lg:col-span-1 space-y-4">
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Active Challenges */}
-            <div className="card">
-              <div className="card-header">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Your Active Challenges
-                </h3>
-                <div className="flex space-x-2">
-                  {['all', 'savings', 'spending', 'investment'].map((category) => (
+            {/* View Controls */}
+            <div className="border-2 border-black rounded-lg p-3" style={{backgroundColor: '#CED697'}}>
+              <h3 className="text-sm font-bold mb-3 font-title text-black">Views</h3>
+              <div className="space-y-1">
+                {viewOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
                     <button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                        selectedCategory === category
-                          ? 'bg-primary-100 text-primary-700'
-                          : 'text-gray-600 hover:bg-gray-100'
+                      key={option.id}
+                      onClick={() => setSelectedView(option.id)}
+                      className={`w-full text-left p-2 text-xs rounded-lg border transition-all font-medium font-body flex items-center gap-2 ${
+                        selectedView === option.id
+                          ? 'border-black bg-black text-white'
+                          : 'border-gray-200 hover:border-black hover:bg-white bg-white text-black'
                       }`}
                     >
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                      <Icon className="w-3 h-3" />
+                      <span>{option.label}</span>
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {activeBets.length === 0 ? (
-                <div className="text-center py-8">
-                  <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 mb-4">No active challenges</p>
-                  <button
-                    onClick={() => setShowCreateBet(true)}
-                    className="btn-primary"
-                  >
-                    Create Your First Challenge
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {activeBets.map((bet) => (
-                    <BetCard
-                      key={bet._id || bet.id}
-                      bet={bet}
-                      getProgressPercent={getProgressPercent}
-                      getDaysRemaining={getDaysRemaining}
-                      formatCurrency={formatCurrency}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Popular Challenges */}
-            <div className="card">
-              <div className="card-header">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Popular Challenges
-                </h3>
-                <span className="text-sm text-gray-500">Join these trending challenges</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {popularChallenges.map((challenge, index) => (
-                  <PopularChallengeCard
-                    key={index}
-                    challenge={challenge}
-                    formatCurrency={formatCurrency}
-                  />
-                ))}
+                  );
+                })}
               </div>
             </div>
-          </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Leaderboard */}
-            <div className="card">
-              <div className="card-header">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <Crown className="w-5 h-5 mr-2 text-yellow-500" />
-                  Leaderboard
-                </h3>
-                <span className="text-sm text-gray-500">This Month</span>
-              </div>
+            {/* Controls */}
+            <div className="border-2 border-black rounded-lg p-3" style={{backgroundColor: '#E2DBAD'}}>
+              <h3 className="text-sm font-bold mb-3 font-title text-black">Controls</h3>
+              <div className="space-y-2">
+                <select
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border-2 border-black rounded-lg font-medium font-body focus:outline-none focus:ring-2 focus:ring-black text-black"
+                  style={{
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="7d">7 Days</option>
+                  <option value="30d">30 Days</option>
+                  <option value="90d">90 Days</option>
+                  <option value="1y">1 Year</option>
+                </select>
+                
+                <button
+                  onClick={() => setShowAmounts(!showAmounts)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border-2 border-black rounded-lg transition-colors font-body text-black"
+                  style={{
+                    backgroundColor: 'white'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#8A9253';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.color = 'black';
+                  }}
+                >
+                  {showAmounts ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <span>{showAmounts ? 'Hide' : 'Show'} Amounts</span>
+                </button>
 
-              <div className="space-y-3">
-                {leaderboard.map((player, index) => (
-                  <LeaderboardRow
-                    key={player.id || index}
-                    player={player}
-                    rank={index + 1}
-                    isCurrentUser={player.id === user?.id}
-                    formatCurrency={formatCurrency}
-                  />
-                ))}
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <button className="text-sm text-primary-600 hover:text-primary-700 font-medium">
-                  View Full Leaderboard →
+                <button
+                  onClick={() => setShowCreateBet(true)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border-2 border-black rounded-lg transition-colors font-body text-black"
+                  style={{
+                    backgroundColor: 'white'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#8A9253';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.color = 'black';
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create Bet</span>
                 </button>
               </div>
             </div>
 
-            {/* Achievement Showcase */}
-            <div className="card">
-              <div className="card-header">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Recent Achievements
-                </h3>
-              </div>
-
-              <div className="space-y-3">
-                {(user?.gamification?.recentAchievements || sampleAchievements).map((achievement, index) => (
-                  <div key={index} className="flex items-center space-x-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg">
-                    <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                      <Medal className="w-5 h-5 text-yellow-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        {achievement.title}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {achievement.description}
-                      </p>
-                    </div>
-                    <span className="text-xs text-yellow-600 font-medium">
-                      +{achievement.points}pts
-                    </span>
-                  </div>
-                ))}
+            {/* Quick Stats */}
+            <div className="border-2 border-black rounded-lg p-3" style={{backgroundColor: '#98B8D6'}}>
+              <h4 className="font-bold mb-2 text-xs font-title text-black">Quick Stats</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-black">Active Bets</span>
+                  <span className="text-xs font-bold text-black">{bettingStats.activeBets}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-black">Win Streak</span>
+                  <span className="text-xs font-bold text-black">{bettingStats.currentStreak}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-black">Biggest Win</span>
+                  <span className="text-xs font-bold text-black">{formatCurrency(bettingStats.biggestWin)}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -273,9 +434,9 @@ const Betting = () => {
         {showCreateBet && (
           <CreateBetModal
             onClose={() => setShowCreateBet(false)}
-            onSubmit={() => {
+            onSuccess={() => {
               setShowCreateBet(false);
-              fetchBettingData();
+              fetchBettingData(); // Refresh betting data when new bet is created
             }}
           />
         )}
@@ -284,190 +445,72 @@ const Betting = () => {
   );
 };
 
-// Stats Card Component
-const StatsCard = ({ title, value, icon: Icon, color }) => {
-  const colorClasses = {
-    primary: 'bg-primary-500',
-    success: 'bg-success-500',
-    warning: 'bg-warning-500',
-    danger: 'bg-danger-500'
-  };
-
-  return (
-    <div className="metric-card">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-        </div>
-        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${colorClasses[color]}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Bet Card Component
-const BetCard = ({ bet, getProgressPercent, getDaysRemaining, formatCurrency }) => {
-  const progress = getProgressPercent(bet);
-  const daysLeft = getDaysRemaining(bet.endDate);
-  const isCompleted = progress >= 100;
-
-  return (
-    <div className={`p-4 rounded-lg border-2 transition-all ${
-      isCompleted
-        ? 'border-green-200 bg-green-50'
-        : 'border-primary-200 bg-primary-50 hover:border-primary-300'
-    }`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <h4 className="font-semibold text-gray-900">{bet.title}</h4>
-          <p className="text-sm text-gray-600 mt-1">{bet.description}</p>
-          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-            <span className="flex items-center">
-              <DollarSign className="w-3 h-3 mr-1" />
-              Stake: {formatCurrency(bet.stakeAmount)}
-            </span>
-            <span className="flex items-center">
-              <Users className="w-3 h-3 mr-1" />
-              {bet.participants} players
-            </span>
-            <span className="flex items-center">
-              <Clock className="w-3 h-3 mr-1" />
-              {daysLeft} days left
-            </span>
-          </div>
-        </div>
-        
-        {isCompleted && (
-          <div className="flex items-center space-x-2">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            <span className="text-sm font-medium text-green-600">Completed!</span>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span>Progress: {formatCurrency(bet.currentValue || 0)} / {formatCurrency(bet.targetValue)}</span>
-          <span className="font-medium">{progress.toFixed(1)}%</span>
-        </div>
-        
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className={`h-2 rounded-full transition-all duration-300 ${
-              isCompleted ? 'bg-green-500' : 'bg-primary-500'
-            }`}
-            style={{ width: `${Math.min(100, progress)}%` }}
-          />
-        </div>
-      </div>
-
-      {!isCompleted && (
-        <div className="flex space-x-2 mt-3">
-          <button className="flex-1 bg-primary-600 text-white text-sm py-2 px-3 rounded hover:bg-primary-700 transition-colors">
-            Update Progress
-          </button>
-          <button className="px-3 py-2 text-gray-600 hover:text-gray-800 text-sm">
-            Details
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Popular Challenge Card Component
-const PopularChallengeCard = ({ challenge, formatCurrency }) => (
-  <div className="p-4 border border-gray-200 rounded-lg hover:border-primary-200 hover:bg-primary-50 transition-all cursor-pointer">
-    <div className="flex items-center justify-between mb-2">
-      <h4 className="font-medium text-gray-900">{challenge.title}</h4>
-      <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
-        {challenge.difficulty}
-      </span>
-    </div>
-    
-    <p className="text-sm text-gray-600 mb-3">{challenge.description}</p>
-    
-    <div className="flex items-center justify-between text-xs text-gray-500">
-      <span>{challenge.participants} participants</span>
-      <span>Prize pool: {formatCurrency(challenge.prizePool)}</span>
-    </div>
-    
-    <button className="w-full mt-3 btn-primary text-sm py-2">
-      Join Challenge
-    </button>
-  </div>
-);
-
-// Leaderboard Row Component
-const LeaderboardRow = ({ player, rank, isCurrentUser, formatCurrency }) => {
-  const getRankIcon = (rank) => {
-    if (rank === 1) return <Crown className="w-4 h-4 text-yellow-500" />;
-    if (rank === 2) return <Medal className="w-4 h-4 text-gray-400" />;
-    if (rank === 3) return <Medal className="w-4 h-4 text-orange-500" />;
-    return <span className="text-sm font-medium text-gray-500">#{rank}</span>;
-  };
-
-  return (
-    <div className={`flex items-center space-x-3 p-2 rounded-lg ${
-      isCurrentUser ? 'bg-primary-50 border border-primary-200' : 'hover:bg-gray-50'
-    }`}>
-      <div className="flex items-center justify-center w-8">
-        {getRankIcon(rank)}
-      </div>
-      
-      <div className="w-8 h-8 bg-gradient-to-r from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
-        <span className="text-white text-sm font-medium">
-          {player.name?.charAt(0)?.toUpperCase() || 'U'}
-        </span>
-      </div>
-      
-      <div className="flex-1">
-        <p className="text-sm font-medium text-gray-900">
-          {player.name} {isCurrentUser && '(You)'}
-        </p>
-        <p className="text-xs text-gray-500">
-          {player.completedChallenges} challenges completed
-        </p>
-      </div>
-      
-      <div className="text-right">
-        <p className="text-sm font-semibold text-gray-900">
-          {formatCurrency(player.totalWinnings)}
-        </p>
-        <p className="text-xs text-gray-500">
-          {player.points} pts
-        </p>
-      </div>
-    </div>
-  );
-};
-
 // Create Bet Modal Component
-const CreateBetModal = ({ onClose, onSubmit }) => {
+const CreateBetModal = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: 'savings',
     targetValue: '',
     stakeAmount: '',
-    duration: '30',
-    isPublic: true
+    duration: '30'
   });
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState('details'); // 'details', 'payment'
+  const [paymentIntent, setPaymentIntent] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      await axios.post('/api/bets', formData);
-      onSubmit();
+      // Create the bet
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + parseInt(formData.duration));
+      
+      const betResponse = await axios.post('/api/bets', {
+        ...formData,
+        description: formData.description || `${formData.title} - ${formData.targetValue} target`,
+        targetMetric: 'amount_saved',
+        endDate: endDate.toISOString(),
+        selectedCharity: 'local_charity',
+        visibility: 'private'
+      });
+      
+      // Create payment intent
+      const paymentResponse = await axios.post(
+        `/api/bets/${betResponse.data.bet._id}/create-payment-intent`
+      );
+      
+      setPaymentIntent({
+        ...paymentResponse.data,
+        betId: betResponse.data.bet._id
+      });
+      setStep('payment');
+      
     } catch (error) {
       console.error('Failed to create bet:', error);
-      onSubmit(); // For demo purposes
+      alert('Failed to create bet. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    // In a real implementation, you'd integrate Stripe Elements here
+    // For now, we'll simulate payment
+    setLoading(true);
+    
+    try {
+      await axios.post(`/api/bets/${paymentIntent.betId}/activate`, {
+        paymentIntentId: paymentIntent.paymentIntentId,
+        amountPaid: paymentIntent.amount
+      });
+      
+      onSuccess();
+    } catch (error) {
+      console.error('Payment failed:', error);
+      alert('Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -482,215 +525,187 @@ const CreateBetModal = ({ onClose, onSubmit }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-md w-full border-2 border-black">
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Create New Challenge
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold font-title">
+              {step === 'details' ? 'Create New Bet' : 'Complete Payment'}
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Challenge Title
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="Save $1000 in 30 days"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className="input-field resize-none h-20"
-                placeholder="Describe your challenge..."
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+          {step === 'details' ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
+                <label className="block text-sm font-medium text-black mb-1 font-body">
+                  Challenge Title
                 </label>
-                <select
-                  name="category"
-                  value={formData.category}
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
                   onChange={handleChange}
-                  className="input-field"
-                >
-                  <option value="savings">Savings</option>
-                  <option value="spending">Spending</option>
-                  <option value="investment">Investment</option>
-                  <option value="debt">Debt Payoff</option>
-                </select>
+                  className="w-full px-3 py-2 text-sm border-2 border-black rounded-lg font-body focus:outline-none focus:ring-2 focus:ring-black text-black"
+                  style={{ backgroundColor: 'white' }}
+                  placeholder="Save $1000 this month"
+                  required
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Target Amount
+                <label className="block text-sm font-medium text-black mb-1 font-body">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 text-sm border-2 border-black rounded-lg font-body focus:outline-none focus:ring-2 focus:ring-black text-black"
+                  style={{ backgroundColor: 'white' }}
+                  placeholder="Describe your financial goal and how you'll achieve it"
+                  rows="2"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-1 font-body">
+                  Target Amount ($)
                 </label>
                 <input
                   type="number"
                   name="targetValue"
                   value={formData.targetValue}
                   onChange={handleChange}
-                  className="input-field"
+                  className="w-full px-3 py-2 text-sm border-2 border-black rounded-lg font-body focus:outline-none focus:ring-2 focus:ring-black text-black"
+                  style={{ backgroundColor: 'white' }}
                   placeholder="1000"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Stake Amount
-                </label>
-                <input
-                  type="number"
-                  name="stakeAmount"
-                  value={formData.stakeAmount}
-                  onChange={handleChange}
-                  className="input-field"
-                  placeholder="25"
+                  min="1"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Duration (days)
-                </label>
-                <select
-                  name="duration"
-                  value={formData.duration}
-                  onChange={handleChange}
-                  className="input-field"
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1 font-body">
+                    Stake ($)
+                  </label>
+                  <input
+                    type="number"
+                    name="stakeAmount"
+                    value={formData.stakeAmount}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 text-sm border-2 border-black rounded-lg font-body focus:outline-none focus:ring-2 focus:ring-black text-black"
+                    style={{ backgroundColor: 'white' }}
+                    placeholder="25"
+                    min="1"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1 font-body">
+                    Duration
+                  </label>
+                  <select
+                    name="duration"
+                    value={formData.duration}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 text-sm border-2 border-black rounded-lg font-body focus:outline-none focus:ring-2 focus:ring-black text-black"
+                    style={{ backgroundColor: 'white' }}
+                  >
+                    <option value="7">1 Week</option>
+                    <option value="30">1 Month</option>
+                    <option value="90">3 Months</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-black border-2 border-black rounded-lg hover:bg-gray-100 transition-colors font-body"
+                  style={{ backgroundColor: 'white' }}
                 >
-                  <option value="7">1 Week</option>
-                  <option value="30">1 Month</option>
-                  <option value="90">3 Months</option>
-                  <option value="365">1 Year</option>
-                </select>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white border-2 border-black rounded-lg hover:bg-gray-800 transition-colors font-body disabled:opacity-50"
+                  style={{ backgroundColor: 'black' }}
+                >
+                  {loading ? <LoadingSpinner size="small" /> : 'Continue'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg p-4 border-2 border-black" style={{ backgroundColor: '#E2DBAD' }}>
+                <h4 className="font-medium mb-2 font-title">Payment Summary</h4>
+                <div className="space-y-1 text-sm font-body">
+                  <div className="flex justify-between">
+                    <span>Stake Amount:</span>
+                    <span className="font-medium">${paymentIntent?.amount}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Processing Fee:</span>
+                    <span>$0</span>
+                  </div>
+                  <div className="border-t border-black pt-1 flex justify-between font-medium">
+                    <span>Total:</span>
+                    <span>${paymentIntent?.amount}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-2 border-black rounded-lg p-3" style={{ backgroundColor: '#98B8D6' }}>
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-black mt-0.5" />
+                  <div className="text-sm text-black">
+                    <p className="font-medium font-title">Commitment Contract</p>
+                    <p className="font-body">Your stake will be refunded if you succeed, or donated to charity if you don't.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setStep('details')}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-black border-2 border-black rounded-lg hover:bg-gray-100 transition-colors font-body"
+                  style={{ backgroundColor: 'white' }}
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handlePayment}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white border-2 border-black rounded-lg hover:bg-gray-800 transition-colors font-body disabled:opacity-50 flex items-center justify-center"
+                  style={{ backgroundColor: 'black' }}
+                >
+                  {loading ? (
+                    <LoadingSpinner size="small" />
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Pay ${paymentIntent?.amount}
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="isPublic"
-                checked={formData.isPublic}
-                onChange={handleChange}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label className="ml-2 text-sm text-gray-700">
-                Make this challenge public (others can join)
-              </label>
-            </div>
-
-            <div className="flex space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 btn-primary disabled:opacity-50"
-              >
-                {loading ? <LoadingSpinner size="small" /> : 'Create Challenge'}
-              </button>
-            </div>
-          </form>
+          )}
         </div>
       </div>
     </div>
   );
 };
-
-// Sample Data
-const sampleBets = [
-  {
-    id: '1',
-    title: 'Emergency Fund Challenge',
-    description: 'Save $5,000 for emergency fund',
-    category: 'savings',
-    targetValue: 5000,
-    currentValue: 3200,
-    stakeAmount: 50,
-    participants: 12,
-    endDate: '2025-03-15',
-    status: 'active'
-  },
-  {
-    id: '2',
-    title: 'No Dining Out February',
-    description: 'Avoid restaurant spending for 30 days',
-    category: 'spending',
-    targetValue: 0,
-    currentValue: 45,
-    stakeAmount: 25,
-    participants: 8,
-    endDate: '2025-02-28',
-    status: 'active'
-  }
-];
-
-const sampleLeaderboard = [
-  { id: '1', name: 'Sarah Chen', totalWinnings: 1250, points: 890, completedChallenges: 12 },
-  { id: '2', name: 'Mike Johnson', totalWinnings: 980, points: 750, completedChallenges: 9 },
-  { id: '3', name: 'Emma Davis', totalWinnings: 750, points: 680, completedChallenges: 8 },
-  { id: '4', name: 'You', totalWinnings: 420, points: 520, completedChallenges: 5 },
-  { id: '5', name: 'Alex Kim', totalWinnings: 380, points: 480, completedChallenges: 6 }
-];
-
-const popularChallenges = [
-  {
-    title: 'January Savings Sprint',
-    description: 'Save $500 this month',
-    difficulty: 'Easy',
-    participants: 45,
-    prizePool: 2250
-  },
-  {
-    title: 'Coffee Shop Detox',
-    description: 'No coffee shop purchases for 2 weeks',
-    difficulty: 'Medium',
-    participants: 23,
-    prizePool: 1150
-  }
-];
-
-const sampleAchievements = [
-  {
-    title: 'First Challenge Complete!',
-    description: 'Completed your first financial challenge',
-    points: 100
-  },
-  {
-    title: 'Savings Streak',
-    description: '7 days of consistent saving',
-    points: 50
-  },
-  {
-    title: 'Budget Master',
-    description: 'Stayed within budget for a full month',
-    points: 200
-  }
-];
 
 export default Betting;

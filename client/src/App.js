@@ -13,7 +13,7 @@ import Register from './pages/auth/Register';
 import Onboarding from './pages/auth/Onboarding';
 import SimpleDashboard from './pages/SimpleDashboard';
 import Advisor from './pages/Advisor';
-import BettingSimple from './pages/BettingSimple';
+import Betting from './pages/Betting';
 import Integrations from './pages/Integrations';
 // import Profile from './pages/Profile';
 
@@ -113,7 +113,7 @@ function AppRoutes() {
           element={
             user ? (
               isOnboardingComplete(user) ? (
-                <BettingSimple />
+                <Betting />
               ) : (
                 <Navigate to="/onboarding" replace />
               )
