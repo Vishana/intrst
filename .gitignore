@@ -71,3 +71,5 @@ uploads/
 
 # AI generated files
 generated/
+
+client/.env

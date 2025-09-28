@@ -3,18 +3,17 @@ const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { StringOutputParser } = require('@langchain/core/output_parsers');
 const { RunnableSequence } = require('@langchain/core/runnables');
+// ✅ Lightweight charting with canvas
+const { createCanvas } = require('canvas');
+const Chart = require('chart.js/auto');
 
 class AIFinancialAdvisor {
   constructor() {
-    this.models = {
-      openai: null,
-      google: null,
-      anthropic: null
-    };
-    
+    this.models = { openai: null, google: null, anthropic: null };
     this.initializeModels();
+    this.initializeAgents();
   }
-  
+
   initializeModels() {
     // Initialize OpenAI if API key is available
     if (process.env.OPENAI_API_KEY) {
@@ -43,359 +42,608 @@ class AIFinancialAdvisor {
       console.log('❌ GOOGLE_API_KEY not found in environment variables');
     }
     
-    // TODO: Add Anthropic when needed
-    // if (process.env.ANTHROPIC_API_KEY) {
-    //   this.models.anthropic = new ChatAnthropic({
-    //     modelName: 'claude-3-sonnet-20240229',
-    //     temperature: 0.3,
-    //     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-    //   });
-    //   console.log('✅ Anthropic model initialized');
-    // }
   }
-  
+
   getAvailableModel() {
-    if (this.models.openai) return { model: this.models.openai, provider: 'openai' };
     if (this.models.google) return { model: this.models.google, provider: 'google' };
-    if (this.models.anthropic) return { model: this.models.anthropic, provider: 'anthropic' };
-    
     throw new Error('No AI models available. Please configure API keys in .env file.');
   }
-  
-  async generateFinancialAdvice(userQuery, userProfile, financialData = {}) {
+
+  initializeAgents() {
     try {
-      const { model, provider } = this.getAvailableModel();
-      
-      const promptTemplate = PromptTemplate.fromTemplate(`
-        You are a highly experienced financial advisor with expertise in personal finance, investing, budgeting, and financial planning. 
-        You provide personalized, actionable advice based on the user's specific financial situation.
-        
-        USER PROFILE:
-        - Name: {firstName} {lastName}
-        - Age: {age}
-        - Life Stage: {lifeStage}
-        - Risk Tolerance: {riskTolerance}
-        - Primary Goals: {primaryGoals}
-        
-        FINANCIAL SITUATION:
-        - Monthly Income: {monthlyIncome}
-        - Monthly Expenses: {monthlyExpenses}
-        - Current Savings: {currentSavings}
-        - Debt: {debt}
-        - Net Worth: {netWorth}
-        
-        INTEGRATION DATA (Real Financial Accounts):
-        - Connected Accounts: {connectedAccounts}
-        - Total Net Worth from Integrations: {integrationNetWorth}
-        - Total Investments: {totalInvestments}
-        - Monthly Spending from Data: {actualMonthlySpending}
-        - Spending by Category: {spendingByCategory}
-        - Investment Allocation: {investmentAllocation}
-        
-        RECENT ACTIVITY:
-        {additionalContext}
-        
-        USER QUESTION: {userQuery}
-        
-        Please provide:
-        1. A clear, personalized response to their question using REAL data from their connected accounts
-        2. 3-5 specific, actionable insights based on their actual financial data
-        3. 3-4 concrete suggestions they can implement immediately
-        4. If relevant, a brief visualization recommendation using their real data
-        
-        When you have real integration data, prioritize that over the basic profile data.
-        Use their actual spending patterns, investment allocations, and account balances in your advice.
-        Keep your response practical, encouraging, and tailored to their specific situation.
-        
-        Format your response as JSON with the following structure:
-        {{
-          "response": "Main response text",
-          "insights": ["insight1", "insight2", "insight3"],
-          "suggestions": ["suggestion1", "suggestion2", "suggestion3"],
-          "visualization": {{
-            "type": "chart_type",
-            "title": "Chart title",
-            "description": "Why this visualization helps"
-          }},
-          "followUpQuestions": ["question1", "question2"]
-        }}
-      `);
-      
-      const chain = RunnableSequence.from([
-        promptTemplate,
+      const { model } = this.getAvailableModel();
+      const createAgent = (name, prompt) => RunnableSequence.from([
+        PromptTemplate.fromTemplate(prompt),
         model,
         new StringOutputParser(),
       ]);
-      
-      const result = await chain.invoke({
-        firstName: userProfile.firstName || 'User',
-        lastName: userProfile.lastName || '',
-        age: userProfile.onboarding?.age || 'Not specified',
-        lifeStage: userProfile.onboarding?.lifeStage || 'Not specified',
-        riskTolerance: userProfile.onboarding?.riskTolerance || 'moderate',
-        primaryGoals: userProfile.onboarding?.primaryGoals?.join(', ') || 'General financial health',
-        monthlyIncome: userProfile.financialProfile?.monthlyIncome || 0,
-        monthlyExpenses: userProfile.financialProfile?.monthlyExpenses || 0,
-        currentSavings: userProfile.financialProfile?.currentSavings || 0,
-        debt: userProfile.financialProfile?.debt || 0,
-        netWorth: userProfile.calculateNetWorth?.() || 
-                 (userProfile.financialProfile?.currentSavings || 0) - (userProfile.financialProfile?.debt || 0),
-        // Integration data
-        connectedAccounts: financialData.connectedIntegrations?.map(conn => `${conn.provider} (${conn.type})`).join(', ') || 'None connected',
-        integrationNetWorth: financialData.financialSummary?.netWorth || financialData.financialInsights?.totalNetWorth || 0,
-        totalInvestments: financialData.financialSummary?.totalInvestments || financialData.financialInsights?.totalInvestments || 0,
-        actualMonthlySpending: financialData.financialSummary?.monthlySpending || financialData.financialInsights?.monthlySpending || 0,
-        spendingByCategory: JSON.stringify(financialData.financialInsights?.spendingByCategory || []),
-        investmentAllocation: JSON.stringify(financialData.financialInsights?.investmentAllocation || []),
-        additionalContext: JSON.stringify({
-          recentTransactions: financialData.recentTransactions?.slice(0, 5) || [],
-          currentGoals: financialData.currentGoals || [],
-          hasIntegrationData: !!(financialData.integrationData && Object.keys(financialData.integrationData).length > 0)
-        }),
-        userQuery: userQuery
-      });
-      
-      try {
-        // Clean the result string before parsing
-        let cleanResult = result.trim();
-        
-        // Remove any markdown code blocks if present
-        if (cleanResult.startsWith('```json')) {
-          cleanResult = cleanResult.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanResult.startsWith('```')) {
-          cleanResult = cleanResult.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        
-        const parsedResult = JSON.parse(cleanResult);
-        return {
-          ...parsedResult,
-          provider: provider,
-          timestamp: new Date()
-        };
-      } catch (parseError) {
-        console.warn('JSON parsing failed, attempting to extract JSON from response:', parseError.message);
-        
-        // Try to extract JSON from the response if it's embedded in text
-        const jsonMatch = result.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsedResult = JSON.parse(jsonMatch[0]);
-            return {
-              ...parsedResult,
-              provider: provider,
-              timestamp: new Date()
-            };
-          } catch (secondParseError) {
-            console.warn('Second JSON parse attempt failed:', secondParseError.message);
+
+      this.agents = {
+        /*
+      dataGenerator: createAgent(`
+      You are a Financial Data Generator AI. Based on the given user profile, financial data, and user query, generate plausible chart data for financial visualization.
+
+      User Profile: {userProfile}
+      Financial Data: {financialData}
+      User Query: {userQuery}
+      Chart Type: {chartType}
+
+      Return ONLY a JSON array of objects like:
+      [{"label": "Category", "value": 123.45}]
+        `),*/
+        transactionSummarizer: createAgent(
+          'TransactionSummarizer',
+          `You are an AI Transaction Summarizer. Input: Raw transactions in JSON. Output: Summarize spending by category and overall monthly patterns in JSON. JSON ONLY.
+
+Input: {transactionData}
+
+Return ONLY valid JSON in this format:
+{{
+  "summary": "Brief summary text",
+  "categories": {{ "category": amount }},
+  "total": totalAmount,
+  "monthlyPattern": "pattern description"
+}}`
+        ),
+        spendingAnalysis: createAgent(
+          'SpendingAnalysis',
+          `You are an AI Spending Analysis Agent. Input: User profile and summarized transactions. Output: Key insights, concerns, recommendations, and potential savings in JSON. JSON ONLY.
+
+Profile: {profile}
+Transactions: {summarizedTransactions}
+
+Return ONLY valid JSON in this format:
+{{
+  "insights": ["insight1", "insight2"],
+  "concerns": ["concern1", "concern2"],
+  "recommendations": ["rec1", "rec2"],
+  "potentialSavings": amount
+}}`
+        ),
+        goalOptimization: createAgent(
+          'GoalOptimization',
+          `You are an AI Goal Optimization Agent. Input: User profile, current goals, progress data. Output: Prioritized goals, strategies, timeline adjustments, overall advice in JSON. JSON ONLY.
+
+Profile: {profile}
+Goals: {goals}
+Progress: {progress}
+
+Return ONLY valid JSON in this format:
+{{
+  "prioritized_goals": ["goal1", "goal2"],
+  "optimization_strategies": ["strategy1", "strategy2"],
+  "timeline_adjustments": {{}},
+  "advice": "overall advice"
+}}`
+        ),
+        budgetPlanner: createAgent(
+          'BudgetPlanner',
+          `You are an AI Budget Planner. Input: User profile, preferences, financial context. Output: Personalized budget plan with categories, percentages, recommendations in JSON. JSON ONLY.
+
+Profile: {profile}
+Preferences: {preferences}
+
+Return ONLY valid JSON in this format:
+{{
+  "categories": {{ "category": {{ "amount": 0, "percentage": 0 }} }},
+  "budget_method": "method name",
+  "recommendations": ["rec1", "rec2"]
+}}`
+        ),
+        chartSelector: createAgent(
+          'ChartSelector',
+          `You are an AI Chart Selector. Input: Summarized data and insights. Output: Recommend chart type and description in JSON. JSON ONLY.
+
+Data: {summarizedData}
+Insights: {insights}
+
+Return ONLY valid JSON in this format:
+{{
+  "type": "bar",
+  "description": "Chart description",
+  "title": "Chart title"
+}}`
+        ),
+        dataFormatter: createAgent(
+          'DataFormatter',
+          `You are an AI Data Formatter. Input: Raw summarized data for visualization. Output: Properly formatted JSON for plotting charts. JSON ONLY.
+
+Raw Data: {rawData}
+
+Return ONLY valid JSON array in this format:
+[{{ "label": "Category", "value": 123.45 }}]`
+        ),
+        financialAdvisor: createAgent(
+          'FinancialAdvisor',
+          `You are a top-tier Financial Advisor AI. Input: User profile, financial context, summarized transactions, insights, and goals. Output: Personalized advice, actionable insights, suggestions, visualization recommendations in JSON. JSON ONLY.
+
+Profile: {profile}
+Transactions: {summarizedTransactions}
+Spending Insights: {spendingInsights}
+Goals: {optimizedGoals}
+Budget: {budgetPlan}
+Chart: {chartRecommendation}
+Data: {formattedChartData}
+User Query: {userQuery}
+
+Return ONLY valid JSON in this format:
+{{
+  "response": "Main response text",
+  "insights": ["insight1", "insight2"],
+  "suggestions": ["suggestion1", "suggestion2"],
+  "visualization": {{ "recommended": true, "type": "chart type" }},
+  "followUpQuestions": ["question1", "question2"]
+}}`
+        )
+      };
+
+      console.log('Agents initialized:', Object.keys(this.agents));
+    } catch (error) {
+      console.error('Failed to initialize agents:', error.message);
+      throw error;
+    }
+  }
+
+  async safeParse(raw, fallback = {}) {
+    try {
+      const cleaned = raw.replace(/```json\s*|```\s*|\n/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      return parsed;
+    } catch (err) {
+      console.warn('⚠️ JSON parse failed:', err.message);
+      console.log('Raw AI output (first 200 chars):', raw.substring(0, 200));
+      return fallback;
+    }
+  }
+
+  async generateChartImage(chartRecommendation, formattedChartData) {
+    console.log('📊 Generating chart image with Chart.js...');
+
+    // ✅ Check if canvas is available
+    try {
+      // Fallback if no data
+      if (!Array.isArray(formattedChartData) || formattedChartData.length === 0) {
+        console.warn('⚠️ No chart data available, using fallback');
+        formattedChartData = [{ label: 'No Data', value: 0 }];
+      }
+
+      const width = 800;
+      const height = 600;
+      const canvas = createCanvas(width, height);
+      const ctx = canvas.getContext('2d');
+
+      // Chart configuration
+      const config = {
+        type: chartRecommendation.type === 'pie' ? 'doughnut' : chartRecommendation.type || 'bar',
+        data: {
+          labels: formattedChartData.map(d => d.label || 'Unknown'),
+          datasets: [{
+            label: 'Amount ($)',
+            data: formattedChartData.map(d => parseFloat(d.value) || 0),
+            backgroundColor: [
+              '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+              '#FF9F40', '#FF6B6B', '#C9CBCF', '#4ECDC4', '#45B7D1'
+            ],
+            borderColor: '#fff',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: false,
+          animation: false,
+          plugins: {
+            title: {
+              display: true,
+              text: chartRecommendation.title || chartRecommendation.description || 'Financial Chart',
+              font: { size: 16, weight: 'bold' }
+            },
+            legend: {
+              display: true,
+              position: 'bottom'
+            }
+          },
+          scales: chartRecommendation.type === 'pie' ? {} : {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Amount ($)'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Category'
+              }
+            }
           }
         }
-        
-        // Final fallback if JSON parsing completely fails
-        return {
-          response: result,
-          insights: ["AI provided detailed financial advice"],
-          suggestions: [
-            "Review the advice provided above",
-            "Consider implementing the recommendations",
-            "Ask follow-up questions for clarification"
-          ],
-          provider: provider,
-          timestamp: new Date()
-        };
+      };
+
+      // Create chart
+      const chart = new Chart(ctx, config);
+
+      // Get image buffer
+      const imageBuffer = canvas.toBuffer('image/png');
+      
+      // Cleanup
+      chart.destroy();
+
+      console.log('✅ Chart image generated successfully');
+      return imageBuffer;
+
+    } catch (err) {
+      console.warn('⚠️ Chart generation failed:', err.message);
+      return null;
+    }
+  }
+
+  async getRelevantAgents(query) {
+    const { model } = this.getAvailableModel(); // ✅ Fixed: Use getAvailableModel instead of direct access
+    if (!model) {
+      console.warn('⚠️ No model available, falling back to all agents.');
+      return ['transactionSummarizer', 'spendingAnalysis', 'goalOptimization', 'budgetPlanner', 'financialAdvisor', 'chartSelector', 'dataFormatter'];
+    }
+
+    const availableAgents = ['transactionSummarizer', 'spendingAnalysis', 'goalOptimization', 'budgetPlanner'];
+    const agentList = availableAgents.map(name => `- ${name}`).join('\n');
+
+    const prompt = `
+You are an expert AI selecting the most relevant financial subagents for a user's query.
+Query: "${query}"
+
+Available subagents:
+${agentList}
+
+Return only the top 2 subagents most relevant to this query in a JSON array, like:
+["spendingAnalysis", "budgetPlanner"]
+
+IMPORTANT: Return ONLY the JSON array, no other text.
+`;
+
+    let top2 = ['spendingAnalysis', 'budgetPlanner']; // Default fallback
+    try {
+      // ✅ Fixed: Added await and correct property access
+      const response = await model.invoke(prompt);
+      const responseText = response.content || response; // ✅ Fixed: Use content property
+      const parsed = JSON.parse(responseText.trim());
+      if (Array.isArray(parsed)) {
+        top2 = parsed.filter(agent => availableAgents.includes(agent));
       }
-      
-    } catch (error) {
-      console.error('AI Advisor error:', error);
-      throw new Error(`Failed to generate financial advice: ${error.message}`);
+    } catch (err) {
+      console.warn('⚠️ Agent selection failed, using defaults:', err.message);
     }
+
+    // Always append required agents
+    const finalAgents = [...new Set([...top2, 'financialAdvisor', 'chartSelector', 'dataFormatter'])];
+    console.log('📌 Selected agents:', finalAgents.join(', '));
+    return finalAgents;
   }
-  
-  async analyzeSpendingPattern(transactions, userProfile, timeframe = '30d') {
+
+  async summarizeTransactions(transactions) {
+    console.log('📥 Summarizing transactions...');
     try {
-      const { model, provider } = this.getAvailableModel();
-      
-      const promptTemplate = PromptTemplate.fromTemplate(`
-        You are a financial data analyst. Analyze the following spending data and provide insights.
-        
-        USER PROFILE:
-        - Monthly Income: {monthlyIncome}
-        - Monthly Expenses: {monthlyExpenses}
-        - Risk Tolerance: {riskTolerance}
-        
-        SPENDING DATA (last {timeframe}):
-        {transactionData}
-        
-        Analyze the spending patterns and provide:
-        1. Key spending insights
-        2. Areas of concern or improvement
-        3. Spending efficiency recommendations
-        4. Budget optimization suggestions
-        
-        Format as JSON:
-        {{
-          "summary": "Overall spending analysis",
-          "insights": ["insight1", "insight2", "insight3"],
-          "concerns": ["concern1", "concern2"],
-          "recommendations": [
-            {{
-              "category": "category",
-              "current": amount,
-              "recommended": amount,
-              "strategy": "how to achieve this"
-            }}
-          ],
-          "efficiency_score": number_out_of_100,
-          "potential_savings": monthly_amount
-        }}
-      `);
-      
-      const chain = RunnableSequence.from([
-        promptTemplate,
-        model,
-        new StringOutputParser(),
-      ]);
-      
-      const result = await chain.invoke({
-        monthlyIncome: userProfile.financialProfile?.monthlyIncome || 0,
-        monthlyExpenses: userProfile.financialProfile?.monthlyExpenses || 0,
-        riskTolerance: userProfile.onboarding?.riskTolerance || 'moderate',
-        timeframe: timeframe,
-        transactionData: JSON.stringify(transactions)
+      const raw = await this.agents.transactionSummarizer.invoke({ 
+        transactionData: JSON.stringify(transactions) 
       });
-      
-      return JSON.parse(result);
-      
+      const result = await this.safeParse(raw, { 
+        summary: 'No transactions to summarize', 
+        categories: {},
+        total: 0,
+        monthlyPattern: 'No pattern available'
+      });
+      console.log('✅ Transaction summary complete');
+      return result;
     } catch (error) {
-      console.error('Spending analysis error:', error);
-      throw new Error(`Failed to analyze spending: ${error.message}`);
+      console.error('❌ Transaction summarization failed:', error.message);
+      return { summary: 'Failed to summarize', categories: {}, total: 0 };
     }
   }
-  
-  async optimizeGoals(goals, userProfile, currentProgress) {
+async generateFakeChartData(userProfile, financialData = {}, userQuery = '', chartType = 'bar') {
+  try {
+    const { model } = this.getAvailableModel(); // Gemini model
+    if (!model) throw new Error('No AI model available.');
+
+    const prompt = `
+You are a Financial Data Generator AI. Based on the given user profile, financial data, and user query, generate plausible chart data for financial visualization.
+
+User Profile: ${JSON.stringify(userProfile)}
+Financial Data: ${JSON.stringify(financialData)}
+User Query: "${userQuery}"
+Chart Type: ${chartType}
+
+Return ONLY a JSON array with NO Markdown fences of objects like:
+[{"label": "Category", "value": 123.45}]
+    `;
+
+    console.log('💡 Generating fallback chart data via Gemini...');
+    const response = await model.invoke(prompt);
+    const raw = response.content || response; // depends on response structure
+    const parsed = JSON.parse(raw);
+    console.log(response);
+
+    if (Array.isArray(parsed)) {
+      console.log('✅ Generated fake chart data:', parsed);
+      return parsed;
+    } else {
+      console.warn('⚠️ Gemini returned invalid data, falling back to empty array');
+      return [];
+    }
+
+  } catch (err) {
+    console.warn('❌ Gemini chart generation failed:', err.message);
+    return [];
+  }
+}
+  async analyzeSpending(userProfile, summarizedTransactions) {
+    console.log('📊 Analyzing spending...');
     try {
-      const { model, provider } = this.getAvailableModel();
-      
-      const promptTemplate = PromptTemplate.fromTemplate(`
-        You are a financial goal optimization expert. Help optimize the user's financial goals.
-        
-        USER PROFILE:
-        - Monthly Income: ${monthlyIncome}
-        - Monthly Expenses: ${monthlyExpenses}
-        - Current Savings: ${currentSavings}
-        - Risk Tolerance: {riskTolerance}
-        
-        CURRENT GOALS:
-        {goalsData}
-        
-        PROGRESS DATA:
-        {progressData}
-        
-        Provide goal optimization advice:
-        1. Priority ranking of goals
-        2. Realistic timeline adjustments
-        3. Contribution recommendations
-        4. Strategy improvements
-        
-        Format as JSON:
-        {{
-          "prioritized_goals": [
-            {{
-              "goal": "goal_name",
-              "priority": number,
-              "reasoning": "why this priority",
-              "recommended_monthly": amount,
-              "projected_completion": "date"
-            }}
-          ],
-          "optimization_strategies": ["strategy1", "strategy2"],
-          "timeline_adjustments": {{
-            "goal_name": "new_timeline_explanation"
-          }},
-          "overall_advice": "comprehensive advice"
-        }}
-      `);
-      
-      const chain = RunnableSequence.from([
-        promptTemplate,
-        model,
-        new StringOutputParser(),
-      ]);
-      
-      const result = await chain.invoke({
-        monthlyIncome: userProfile.financialProfile?.monthlyIncome || 0,
-        monthlyExpenses: userProfile.financialProfile?.monthlyExpenses || 0,
-        currentSavings: userProfile.financialProfile?.currentSavings || 0,
-        riskTolerance: userProfile.onboarding?.riskTolerance || 'moderate',
-        goalsData: JSON.stringify(goals),
-        progressData: JSON.stringify(currentProgress)
+      const raw = await this.agents.spendingAnalysis.invoke({
+        profile: JSON.stringify(userProfile),
+        summarizedTransactions: JSON.stringify(summarizedTransactions)
       });
-      
-      return JSON.parse(result);
-      
+      const result = await this.safeParse(raw, { 
+        insights: [], 
+        concerns: [], 
+        recommendations: [],
+        potentialSavings: 0
+      });
+      console.log('✅ Spending analysis complete');
+      return result;
     } catch (error) {
-      console.error('Goal optimization error:', error);
-      throw new Error(`Failed to optimize goals: ${error.message}`);
+      console.error('❌ Spending analysis failed:', error.message);
+      return { insights: [], concerns: [], recommendations: [] };
     }
   }
-  
+
+  async optimizeGoals(userProfile, goals, progress) {
+    console.log('🎯 Optimizing goals...');
+    try {
+      const raw = await this.agents.goalOptimization.invoke({
+        profile: JSON.stringify(userProfile),
+        goals: JSON.stringify(goals),
+        progress: JSON.stringify(progress)
+      });
+      const result = await this.safeParse(raw, { 
+        prioritized_goals: [], 
+        optimization_strategies: [],
+        timeline_adjustments: {},
+        advice: 'No advice available'
+      });
+      console.log('✅ Goal optimization complete');
+      return result;
+    } catch (error) {
+      console.error('❌ Goal optimization failed:', error.message);
+      return { prioritized_goals: [], optimization_strategies: [] };
+    }
+  }
+
   async generateBudgetPlan(userProfile, preferences = {}) {
+    console.log('💰 Generating budget plan...');
     try {
-      const { model, provider } = this.getAvailableModel();
-      
-      const promptTemplate = PromptTemplate.fromTemplate(`
-        Create a personalized budget plan for this user.
-        
-        USER PROFILE:
-        - Monthly Income: {monthlyIncome}
-        - Monthly Expenses: {monthlyExpenses}
-        - Current Savings: {currentSavings}
-        - Debt: {debt}
-        - Life Stage: {lifeStage}
-        - Primary Goals: {primaryGoals}
-        
-        PREFERENCES:
-        {preferences}
-        
-        Create a realistic, personalized budget using proven budgeting methods.
-        Consider their life stage, goals, and current financial situation.
-        
-        Format as JSON:
-        {{
-          "budget_method": "50/30/20 or Zero-based or custom",
-          "categories": {{
-            "needs": {{ "amount": number, "percentage": number, "items": ["item1", "item2"] }},
-            "wants": {{ "amount": number, "percentage": number, "items": ["item1", "item2"] }},
-            "savings": {{ "amount": number, "percentage": number, "items": ["item1", "item2"] }},
-            "debt_payment": {{ "amount": number, "percentage": number }}
-          }},
-          "monthly_surplus": number,
-          "recommendations": ["recommendation1", "recommendation2"],
-          "adjustments_needed": ["adjustment1", "adjustment2"],
-          "success_tips": ["tip1", "tip2", "tip3"]
-        }}
-      `);
-      
-      const chain = RunnableSequence.from([
-        promptTemplate,
-        model,
-        new StringOutputParser(),
-      ]);
-      
-      const result = await chain.invoke({
-        monthlyIncome: userProfile.financialProfile?.monthlyIncome || 0,
-        monthlyExpenses: userProfile.financialProfile?.monthlyExpenses || 0,
-        currentSavings: userProfile.financialProfile?.currentSavings || 0,
-        debt: userProfile.financialProfile?.debt || 0,
-        lifeStage: userProfile.onboarding?.lifeStage || 'Not specified',
-        primaryGoals: userProfile.onboarding?.primaryGoals?.join(', ') || 'General financial health',
+      const raw = await this.agents.budgetPlanner.invoke({
+        profile: JSON.stringify(userProfile),
         preferences: JSON.stringify(preferences)
       });
-      
-      return JSON.parse(result);
-      
+      const result = await this.safeParse(raw, { 
+        categories: {}, 
+        budget_method: 'default',
+        recommendations: []
+      });
+      console.log('✅ Budget plan generated');
+      return result;
     } catch (error) {
-      console.error('Budget planning error:', error);
-      throw new Error(`Failed to generate budget plan: ${error.message}`);
+      console.error('❌ Budget planning failed:', error.message);
+      return { categories: {}, budget_method: 'default' };
+    }
+  }
+
+  async selectChart(summarizedData, insights) {
+    console.log('📈 Selecting chart...');
+    try {
+      const raw = await this.agents.chartSelector.invoke({
+        summarizedData: JSON.stringify(summarizedData),
+        insights: JSON.stringify(insights)
+      });
+      const result = await this.safeParse(raw, { 
+        type: 'bar', 
+        description: 'Financial overview chart',
+        title: 'Financial Summary'
+      });
+      console.log('✅ Chart selection complete');
+      return result;
+    } catch (error) {
+      console.error('❌ Chart selection failed:', error.message);
+      return { type: 'bar', description: 'Chart unavailable' };
+    }
+  }
+
+  async formatChartData(rawData) {
+    console.log('🖌 Formatting chart data...');
+    try {
+      const raw = await this.agents.dataFormatter.invoke({ 
+        rawData: JSON.stringify(rawData) 
+      });
+      const result = await this.safeParse(raw, []);
+      
+      // ✅ Fixed: Ensure we always return array format
+      if (!Array.isArray(result)) {
+        // Convert categories object to array format
+        if (rawData && rawData.categories) {
+          return Object.entries(rawData.categories).map(([label, value]) => ({ 
+            label, 
+            value: parseFloat(value) || 0 
+          }));
+        }
+        return [];
+      }
+      
+      console.log('✅ Chart data formatted');
+      return result;
+    } catch (error) {
+      console.error('❌ Chart data formatting failed:', error.message);
+      return [];
+    }
+  }
+
+  async generateFinancialAdvice(userProfile, financialData = {}, userQuery = '') {
+    const queryText = typeof userQuery === 'string'
+      ? userQuery
+      : userQuery?.content || '';
+
+    console.log('💬 Generating financial advice for query:', queryText);
+
+  try {
+      // ✅ Fetch real data from MongoDB
+      const userId = userProfile?.id;
+      const [transactions, goals, bets] = await Promise.all([
+        Transaction.find({ userId }),
+        Goal.find({ userId }),
+        Bet.find({ userId })
+      ]);
+
+      // Merge into financialData
+      financialData = {
+        ...financialData,
+        recentTransactions: transactions,
+        currentGoals: goals,
+        bets: bets,
+      };
+      const summarized = await this.summarizeTransactions(financialData.recentTransactions || []);
+      
+      // ✅ Fixed: This was already correct but added error handling
+      const relevantAgents = await this.getRelevantAgents(queryText);
+      console.log('📌 Agents selected based on query:', relevantAgents.join(', '));
+
+      let spendingInsights = {};
+      let optimizedGoals = {};
+      let budgetPlan = {};
+      let chartRecommendation = {};
+      let formattedChartData = [];
+
+      // ✅ Added: Parallel execution for better performance
+      const promises = [];
+      
+      if (relevantAgents.includes('spendingAnalysis')) {
+        promises.push(this.analyzeSpending(userProfile, summarized));
+      }
+      if (relevantAgents.includes('goalOptimization')) {
+        promises.push(this.optimizeGoals(
+          userProfile, 
+          financialData.currentGoals || [], 
+          financialData.goalProgress || {}
+        ));
+      }
+      if (relevantAgents.includes('budgetPlanner')) {
+        promises.push(this.generateBudgetPlan(userProfile, financialData.preferences || {}));
+      }
+
+      // Execute relevant agents in parallel
+      const results = await Promise.allSettled(promises);
+      let resultIndex = 0;
+      
+      if (relevantAgents.includes('spendingAnalysis')) {
+        spendingInsights = results[resultIndex].status === 'fulfilled' 
+          ? results[resultIndex].value 
+          : {};
+        resultIndex++;
+      }
+      if (relevantAgents.includes('goalOptimization')) {
+        optimizedGoals = results[resultIndex].status === 'fulfilled' 
+          ? results[resultIndex].value 
+          : {};
+        resultIndex++;
+      }
+      if (relevantAgents.includes('budgetPlanner')) {
+        budgetPlan = results[resultIndex].status === 'fulfilled' 
+          ? results[resultIndex].value 
+          : {};
+      }
+
+      // Chart generation
+if (relevantAgents.includes('chartSelector')) {
+  chartRecommendation = await this.selectChart(summarized, spendingInsights);
+  formattedChartData = await this.formatChartData(summarized);
+
+  // ✅ Fallback: Generate chart data via Gemini if none exists
+if (!formattedChartData || formattedChartData.length === 0) {
+  console.log('faking some data');
+  formattedChartData = await this.generateFakeChartData(userProfile, financialData, userQuery, chartRecommendation.type);
+}
+
+}
+
+      console.log('📌 Invoking FinancialAdvisor agent with all data...');
+
+      const raw = await this.agents.financialAdvisor.invoke({
+        profile: JSON.stringify(userProfile),
+        summarizedTransactions: JSON.stringify(summarized),
+        spendingInsights: JSON.stringify(spendingInsights),
+        optimizedGoals: JSON.stringify(optimizedGoals),
+        budgetPlan: JSON.stringify(budgetPlan),
+        chartRecommendation: JSON.stringify(chartRecommendation),
+        formattedChartData: JSON.stringify(formattedChartData),
+        userQuery
+      });
+
+      const result = await this.safeParse(raw, {
+        response: 'Could not generate advice',
+        insights: [],
+        suggestions: [],
+        visualization: {},
+        followUpQuestions: []
+      });
+
+      console.log('✅ Financial advice generated');
+
+      // Generate chart image if applicable
+// Generate interactive chart data for frontend rendering
+if (chartRecommendation && Array.isArray(formattedChartData) && formattedChartData.length > 0) {
+  try {
+    result.visualization = {
+      type: chartRecommendation.type || 'pie',
+      title: chartRecommendation.title || chartRecommendation.description || 'Financial Chart',
+      data: {
+        labels: formattedChartData.map(d => d.label || 'Unknown'),
+        datasets: [{
+          label: 'Amount ($)',
+          data: formattedChartData.map(d => parseFloat(d.value) || 0),
+          backgroundColor: [
+            '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+            '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+          ],
+          borderColor: '#FFFFFF',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      },
+      recommended: true
+    };
+    console.log('Chart data created:', JSON.stringify(result.visualization, null, 2));
+  } catch (err) {
+    console.warn('Chart data preparation failed:', err.message);
+  }
+} else {
+  console.log('No chart data available:', { chartRecommendation, formattedChartData });
+}
+      return result;
+    } catch (error) {
+      console.error('❌ Financial advice generation failed:', error.message);
+      return {
+        response: 'Sorry, I encountered an error generating advice. Please try again.',
+        insights: [],
+        suggestions: [],
+        visualization: {},
+        followUpQuestions: []
+      };
     }
   }
 
@@ -610,7 +858,7 @@ class AIFinancialAdvisor {
     } catch (error) {
       console.error('Life event impact calculation error:', error);
       throw new Error(`Failed to calculate life event impact: ${error.message}`);
-    }
+        }
   }
 }
 
