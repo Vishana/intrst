@@ -4,7 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Components
-import Navbar from './components/layout/Navbar';
+import TopNavigationBar from './components/layout/TopNavigationBar';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Pages
@@ -48,7 +48,7 @@ function AppRoutes() {
 
   return (
     <>
-      {user && <Navbar />}
+      {user && <TopNavigationBar />}
       <Routes>
         {/* Public Routes */}
         <Route 

@@ -235,6 +235,228 @@ router.post('/budget-plan', auth, requireOnboarding, async (req, res) => {
   }
 });
 
+// @route   POST /api/advisor/life-path-projection
+// @desc    Generate AI-powered life path financial projection
+// @access  Private
+router.post('/life-path-projection', auth, requireOnboarding, async (req, res) => {
+  try {
+    const { userData, timeRange, currentAge, retirementAge } = req.body;
+    
+    console.log(`🔮 Life path projection request from ${req.user.firstName}`);
+    
+    // Get comprehensive user financial data
+    let comprehensiveUserData = userData;
+    if (!comprehensiveUserData) {
+      const fullUser = await User.findById(req.user._id);
+      const transactions = await Transaction.find({ userId: req.user._id })
+        .sort({ date: -1 })
+        .limit(100);
+      const goals = await Goal.find({ userId: req.user._id });
+      
+      comprehensiveUserData = {
+        ...fullUser.toObject(),
+        recentTransactions: transactions,
+        goals: goals,
+        currentAge: fullUser.age || currentAge || 25,
+        retirementAge: fullUser.retirementAge || retirementAge || 65
+      };
+    }
+    
+    // Generate life path projection using Gemini 2.5 Flash AI
+    const projection = await aiAdvisor.generateLifePathProjection(
+      comprehensiveUserData,
+      timeRange
+    );
+    
+    console.log(`✅ Gemini 2.5 Flash life path projection generated successfully`);
+    res.json(projection);
+    
+  } catch (error) {
+    console.error('❌ Life path projection error:', error.message);
+    
+    // Handle rate limiting and timeouts specifically
+    if (error.message === 'RATE_LIMITED') {
+      console.log('🚨 Gemini API rate limited, using enhanced fallback projection');
+      const enhancedFallback = generateEnhancedFallbackLifeProjection(currentAge || 25, retirementAge || 65, req.user);
+      res.json({
+        ...enhancedFallback,
+        fallback: true,
+        reason: 'rate_limited',
+        message: 'Using enhanced AI simulation due to API rate limits'
+      });
+      return;
+    }
+    
+    // Handle timeout errors
+    if (error.message === 'TIMEOUT' || error.message?.includes('timeout')) {
+      console.log('⏰ Gemini API timeout detected, using enhanced fallback projection');
+      const enhancedFallback = generateEnhancedFallbackLifeProjection(currentAge || 25, retirementAge || 65, req.user);
+      res.json({
+        ...enhancedFallback,
+        fallback: true,
+        reason: 'timeout',
+        message: 'Using enhanced AI simulation due to API timeout'
+      });
+      return;
+    }
+    
+    // Generate fallback projection for other errors
+    console.log('📊 Using fallback projection due to AI service error');
+    const fallbackProjection = generateFallbackLifeProjection(currentAge || 25, retirementAge || 65);
+    res.json({
+      ...fallbackProjection,
+      fallback: true,
+      reason: 'service_error'
+    });
+  }
+});
+
+// @route   POST /api/advisor/life-event-impact
+// @desc    Calculate impact of a life event on financial trajectory
+// @access  Private
+router.post('/life-event-impact', auth, requireOnboarding, async (req, res) => {
+  try {
+    const { userData, baselineProjection, lifeEvent, eventAge, currentAge } = req.body;
+    
+    console.log(`📊 Life event impact analysis: "${lifeEvent}" at age ${eventAge}`);
+    
+    // Use AI to calculate life event impact
+    const impactAnalysis = await aiAdvisor.calculateLifeEventImpact(
+      userData,
+      baselineProjection,
+      lifeEvent,
+      eventAge,
+      currentAge
+    );
+    
+    console.log(`✅ Life event impact calculated`);
+    res.json(impactAnalysis);
+    
+  } catch (error) {
+    console.error('Life event impact error:', error);
+    
+    // Generate fallback impact analysis
+    const fallbackImpact = generateFallbackEventImpact(baselineProjection, lifeEvent, eventAge);
+    res.json(fallbackImpact);
+  }
+});
+
+// @route   GET /api/advisor/comprehensive-data
+// @desc    Get comprehensive user financial data for AI analysis (simplified)
+// @access  Private
+router.get('/comprehensive-data', auth, async (req, res) => {
+  try {
+    console.log(`📊 Fetching comprehensive data for ${req.user.firstName || 'User'}`);
+    
+    const [user, transactions, goals] = await Promise.all([
+      User.findById(req.user._id),
+      Transaction.find({ userId: req.user._id }).sort({ date: -1 }).limit(200),
+      Goal.find({ userId: req.user._id })
+    ]);
+    
+    // Calculate spending patterns
+    const monthlySpending = await Transaction.aggregate([
+      {
+        $match: {
+          userId: req.user._id,
+          date: { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            category: '$category'
+          },
+          total: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    const comprehensiveData = {
+      ...user.toObject(),
+      transactions: transactions,
+      goals: goals,
+      spendingPatterns: monthlySpending,
+      currentAge: user.age || 25,
+      retirementAge: user.retirementAge || 65,
+      financialSummary: user.getFinancialSummary ? user.getFinancialSummary() : {},
+      integrationData: user.integrations?.data || {},
+      insights: user.integrations?.insights || {}
+    };
+    
+    res.json(comprehensiveData);
+    
+  } catch (error) {
+    console.error('Comprehensive data fetch error:', error);
+    res.status(500).json({ message: 'Failed to fetch user data' });
+  }
+});
+
+// @route   GET /api/advisor/users/:userId/comprehensive-data
+// @desc    Get comprehensive user financial data for AI analysis
+// @access  Private
+router.get('/users/:userId/comprehensive-data', auth, async (req, res) => {
+  try {
+    console.log('Received userId param:', req.params.userId);
+    console.log('User from auth:', req.user._id.toString());
+    
+    // If userId is undefined or doesn't match, still allow access for the authenticated user
+    if (req.params.userId === 'undefined' || !req.params.userId || req.params.userId !== req.user._id.toString()) {
+      console.log('Using authenticated user ID instead of param');
+    }
+    
+    console.log(`📊 Fetching comprehensive data for ${req.user.firstName}`);
+    
+    const [user, transactions, goals] = await Promise.all([
+      User.findById(req.user._id),
+      Transaction.find({ userId: req.user._id }).sort({ date: -1 }).limit(200),
+      Goal.find({ userId: req.user._id })
+    ]);
+    
+    // Calculate spending patterns
+    const monthlySpending = await Transaction.aggregate([
+      {
+        $match: {
+          userId: req.user._id,
+          date: { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            category: '$category'
+          },
+          total: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    const comprehensiveData = {
+      ...user.toObject(),
+      transactions: transactions,
+      goals: goals,
+      spendingPatterns: monthlySpending,
+      currentAge: user.age || 25,
+      retirementAge: user.retirementAge || 65,
+      financialSummary: user.getFinancialSummary ? user.getFinancialSummary() : {},
+      integrationData: user.integrations?.data || {},
+      insights: user.integrations?.insights || {}
+    };
+    
+    res.json(comprehensiveData);
+    
+  } catch (error) {
+    console.error('Comprehensive data fetch error:', error);
+    res.status(500).json({ message: 'Failed to fetch user data' });
+  }
+});
+
 // @route   GET /api/advisor/insights
 // @desc    Get personalized financial insights
 // @access  Private
@@ -356,5 +578,278 @@ function generateSpendingVisualization(transactions) {
     }
   };
 }
+
+function generateEnhancedFallbackLifeProjection(currentAge, retirementAge, user) {
+  const projection = [];
+  const sources = [
+    "🚨 FALLBACK MODE ACTIVATED - AI API Failed",
+    "Using zero projection to clearly show fallback state",
+    "This indicates Gemini API timeout or error occurred"
+  ];
+  
+  // Generate zero projection to clearly show fallback
+  for (let age = currentAge; age <= retirementAge + 10; age++) {
+    projection.push({
+      age: age,
+      year: new Date().getFullYear() + (age - currentAge),
+      netWorth: 0 // Zero to clearly indicate fallback
+    });
+  }
+  
+  return {
+    currentPath: projection,
+    optimizedPath: projection, // Same zero projection for both
+    sources: sources,
+    keyMilestones: [{
+      age: currentAge,
+      milestone: "🚨 FALLBACK: AI API Failed",
+      projectedNetWorth: 0
+    }],
+    assumptions: {
+      fallbackMode: true,
+      reason: "Gemini API timeout or error"
+    },
+    provider: 'fallback',
+    timestamp: new Date()
+  };
+}
+
+function generateFallbackLifeProjection(currentAge, retirementAge) {
+  console.log('📊 Generating fallback life projection with ZERO values');
+  
+  const projection = [];
+  const sources = [
+    "🚨 FALLBACK MODE ACTIVATED - AI Service Error",
+    "Using zero projection to clearly show fallback state",
+    "This indicates the AI service failed to generate projections"
+  ];
+  
+  // Generate zero projection to clearly show fallback
+  for (let age = currentAge; age <= retirementAge + 10; age++) {
+    projection.push({
+      age: age,
+      year: new Date().getFullYear() + (age - currentAge),
+      netWorth: 0 // Always zero for fallback
+    });
+  }
+  
+  return {
+    currentPath: projection,
+    optimizedPath: projection, // Same zero projection for both paths
+    sources: sources,
+    keyMilestones: [{
+      age: currentAge,
+      milestone: "🚨 FALLBACK: AI Service Failed",
+      projectedNetWorth: 0
+    }],
+    assumptions: {
+      fallbackMode: true,
+      reason: "AI service error - using zero projection"
+    },
+    provider: 'zero_fallback',
+    timestamp: new Date()
+  };
+}
+function generateFallbackEventImpact(baselineProjection, lifeEvent, eventAge) {
+  const alternativeProjection = baselineProjection.map(point => {
+    let adjustedNetWorth = point.netWorth;
+    const event = lifeEvent.toLowerCase();
+    
+    // Apply event-specific impacts
+    if (point.age >= eventAge) {
+      if (event.includes('roth') || event.includes('ira') || event.includes('401k')) {
+        // Retirement account - tax benefits and compound growth
+        if (point.age < eventAge + 5) {
+          adjustedNetWorth *= 0.95; // Slight short-term reduction
+        } else {
+          adjustedNetWorth *= 1.20; // Long-term tax benefits
+        }
+      } else if (event.includes('grad') || event.includes('school') || event.includes('mba') || event.includes('education')) {
+        // Education - cost upfront, income boost later
+        if (point.age < eventAge + 3) {
+          adjustedNetWorth -= 75000; // Education cost
+        } else {
+          adjustedNetWorth *= 1.35; // Higher earning potential
+        }
+      } else if (event.includes('house') || event.includes('home') || event.includes('mortgage')) {
+        // Home purchase - equity building and tax benefits
+        if (point.age >= eventAge) {
+          const equityBuilding = (point.age - eventAge) * 8000; // Annual equity gain
+          adjustedNetWorth += equityBuilding;
+        }
+      } else if (event.includes('business') || event.includes('startup') || event.includes('entrepreneur')) {
+        // Business venture - high risk, high reward
+        if (point.age < eventAge + 3) {
+          adjustedNetWorth -= 50000; // Initial investment
+        } else if (point.age > eventAge + 5) {
+          adjustedNetWorth *= 1.50; // Potential high returns
+        }
+      } else if (event.includes('child') || event.includes('baby') || event.includes('family')) {
+        // Having children - ongoing costs
+        const yearsWithChild = Math.max(0, point.age - eventAge);
+        adjustedNetWorth -= yearsWithChild * 15000; // Annual child costs
+      } else if (event.includes('car') || event.includes('vehicle')) {
+        // Car purchase - depreciation and costs
+        if (point.age >= eventAge && point.age < eventAge + 7) {
+          adjustedNetWorth -= 30000 - (point.age - eventAge) * 3000; // Depreciation
+        }
+      }
+    }
+    
+    return {
+      ...point,
+      netWorth: Math.max(0, Math.round(adjustedNetWorth))
+    };
+  });
+  
+  const eventSources = [
+    `Life event "${lifeEvent}" modeled at age ${eventAge}`,
+    "Impact calculations based on statistical averages and financial literature",
+    "Actual results may vary based on individual circumstances",
+    "Projections assume current economic conditions continue"
+  ];
+  
+  return { alternativeProjection, eventSources };
+}
+
+// Test endpoints for debugging Gemini API
+router.get('/test-gemini', async (req, res) => {
+  console.log('🧪 Testing Gemini API directly...');
+  
+  try {
+    console.log('📤 Testing Gemini life path projection...');
+    
+    const startTime = Date.now();
+    
+    // Test with simple user data
+    const testUserData = {
+      currentAge: 25,
+      retirementAge: 30,
+      financialProfile: {
+        monthlyIncome: 5000,
+        currentSavings: 15000
+      }
+    };
+    
+    // Try the AI service directly
+    const geminiResponse = await aiAdvisor.generateLifePathProjection(testUserData);
+    
+    const endTime = Date.now();
+    console.log(`⏱️ Gemini response time: ${endTime - startTime}ms`);
+    console.log('🎯 Gemini raw response:', JSON.stringify(geminiResponse, null, 2));
+    console.log('📊 Response type:', typeof geminiResponse);
+    
+    return res.json({
+      success: true,
+      responseTime: `${endTime - startTime}ms`,
+      rawResponse: geminiResponse,
+      responseType: typeof geminiResponse,
+      message: 'Gemini test completed successfully'
+    });
+    
+  } catch (error) {
+    console.error('🚨 Gemini test failed:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack?.substring(0, 500));
+    
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      errorType: error.name,
+      errorDetails: error.stack?.substring(0, 500)
+    });
+  }
+});
+
+// Test Gemini model directly without wrapper
+router.get('/test-gemini-direct', async (req, res) => {
+  console.log('🧪 Testing Gemini model directly...');
+  
+  try {
+    const { model } = aiAdvisor.getAvailableModel();
+    
+    if (!model) {
+      throw new Error('No Gemini model available');
+    }
+    
+    console.log('📤 Testing direct Gemini call...');
+    const startTime = Date.now();
+    
+    // Direct model call with simple prompt
+    const result = await model.invoke('Generate a simple JSON: {"test": "success", "timestamp": "now"}');
+    
+    const endTime = Date.now();
+    console.log(`⏱️ Direct response time: ${endTime - startTime}ms`);
+    console.log('🎯 Direct response:', result);
+    
+    return res.json({
+      success: true,
+      responseTime: `${endTime - startTime}ms`,
+      directResponse: result,
+      message: 'Direct Gemini test completed'
+    });
+    
+  } catch (error) {
+    console.error('🚨 Direct Gemini test failed:', error);
+    
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      errorType: error.name
+    });
+  }
+});
+
+// Test AI service initialization
+router.get('/test-ai-init', async (req, res) => {
+  console.log('🤖 Testing AI service initialization...');
+  
+  try {
+    // Check environment variables
+    const hasGoogleKey = !!process.env.GOOGLE_API_KEY;
+    console.log('🔑 Google API key present:', hasGoogleKey);
+    
+    if (!hasGoogleKey) {
+      return res.json({
+        success: false,
+        error: 'GOOGLE_API_KEY not found in environment variables',
+        envCheck: { GOOGLE_API_KEY: 'NOT_SET' }
+      });
+    }
+    
+    // Test model availability
+    const { model, provider } = aiAdvisor.getAvailableModel();
+    console.log('🎯 Available model:', provider);
+    
+    // Try a super simple call
+    console.log('📤 Testing simple AI call...');
+    const startTime = Date.now();
+    
+    const testResponse = await aiAdvisor.generateFinancialAdvice('Say hello in exactly 5 words.', { name: 'Test User' });
+    
+    const endTime = Date.now();
+    console.log(`⏱️ AI response time: ${endTime - startTime}ms`);
+    console.log('✅ AI response:', testResponse);
+    
+    return res.json({
+      success: true,
+      provider: provider,
+      responseTime: `${endTime - startTime}ms`,
+      testResponse: testResponse,
+      envCheck: { GOOGLE_API_KEY: 'SET' }
+    });
+    
+  } catch (error) {
+    console.error('🚨 AI initialization test failed:', error);
+    
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      errorType: error.name,
+      envCheck: { GOOGLE_API_KEY: process.env.GOOGLE_API_KEY ? 'SET' : 'NOT_SET' }
+    });
+  }
+});
 
 module.exports = router;

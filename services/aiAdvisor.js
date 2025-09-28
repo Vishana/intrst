@@ -27,13 +27,20 @@ class AIFinancialAdvisor {
     }
     
     // Initialize Google AI if API key is available
+    console.log('🔍 Checking Google API key availability:', !!process.env.GOOGLE_API_KEY);
     if (process.env.GOOGLE_API_KEY) {
-      this.models.google = new ChatGoogleGenerativeAI({
-        model: 'gemini-2.5-flash',
-        temperature: 0.3,
-        apiKey: process.env.GOOGLE_API_KEY,
-      });
-      console.log('✅ Google AI model initialized');
+      try {
+        this.models.google = new ChatGoogleGenerativeAI({
+          model: 'gemini-2.5-flash',
+          temperature: 0.3,
+          apiKey: process.env.GOOGLE_API_KEY,
+        });
+        console.log('✅ Google AI model (Gemini 2.5 Flash) initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to initialize Google AI model:', error.message);
+      }
+    } else {
+      console.log('❌ GOOGLE_API_KEY not found in environment variables');
     }
     
     // TODO: Add Anthropic when needed
@@ -389,6 +396,220 @@ class AIFinancialAdvisor {
     } catch (error) {
       console.error('Budget planning error:', error);
       throw new Error(`Failed to generate budget plan: ${error.message}`);
+    }
+  }
+
+  async generateLifePathProjection(userData, timeRange = '40y') {
+    try {
+      const { model, provider } = this.getAvailableModel();
+      
+      console.log(`🤖 Generating life path projection with ${provider} (Gemini 2.5 Flash)...`);
+      
+      const promptTemplate = PromptTemplate.fromTemplate(`
+        You are a financial planner. Create TWO net worth projections: current path vs optimized path.
+        
+        USER: Age {currentAge}, Income {monthlyIncome}/month, Savings {currentSavings}, Risk {riskTolerance}
+        
+        Create yearly projections from age {currentAge} to {retirementAge}.
+        Current path: based on current savings rate
+        Optimized path: with improved savings/investment strategy
+        
+        Format as JSON:
+        {{
+          "currentPath": [
+            {{"age": 25, "year": 2025, "netWorth": 50000}}
+          ],
+          "optimizedPath": [
+            {{"age": 25, "year": 2025, "netWorth": 55000}}
+          ],
+          "assumptions": {{
+            "currentSavingsRate": 10,
+            "optimizedSavingsRate": 20,
+            "annualReturn": 7
+          }},
+          "optimizations": ["Increase 401k", "Reduce expenses", "Side income"]
+        }}
+        
+        Make optimized path 20-30% better than current path.
+      `);
+      
+      const chain = RunnableSequence.from([
+        promptTemplate,
+        model,
+        new StringOutputParser(),
+      ]);
+      
+      const result = await chain.invoke({
+        currentAge: userData?.currentAge || userData?.age || 25,
+        retirementAge: userData?.retirementAge || 65,
+        lifeStage: userData?.onboarding?.lifeStage || userData?.lifeStage || 'Early Career',
+        riskTolerance: userData?.onboarding?.riskTolerance || userData?.riskTolerance || 'moderate',
+        monthlyIncome: userData?.financialProfile?.monthlyIncome || userData?.monthlyIncome || 5000,
+        monthlyExpenses: userData?.financialProfile?.monthlyExpenses || userData?.monthlyExpenses || 3500,
+        currentSavings: userData?.financialProfile?.currentSavings || userData?.currentSavings || 15000,
+        debt: userData?.financialProfile?.debt || userData?.debt || 0,
+        netWorth: (userData?.financialProfile?.currentSavings || userData?.currentSavings || 15000) - (userData?.financialProfile?.debt || userData?.debt || 0),
+        primaryGoals: userData?.onboarding?.primaryGoals?.join(', ') || userData?.goals?.map(g => g?.title).join(', ') || 'Financial independence',
+        recentActivity: JSON.stringify({
+          hasTransactions: !!(userData?.transactions && userData.transactions.length > 0),
+          recentGoals: userData?.goals?.slice(0, 3) || [],
+          spendingPatterns: userData?.spendingPatterns || []
+        })
+      });
+      
+      console.log('✅ Gemini 2.5 Flash life path response received, parsing...');
+      
+      try {
+        // Clean the result string before parsing (same as generateFinancialAdvice)
+        let cleanResult = result.trim();
+        
+        // Remove any markdown code blocks if present
+        if (cleanResult.startsWith('```json')) {
+          cleanResult = cleanResult.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResult.startsWith('```')) {
+          cleanResult = cleanResult.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        const parsedResult = JSON.parse(cleanResult);
+        console.log(`✅ Gemini life path projection generated: ${parsedResult.projection?.length || 0} data points`);
+        
+        return {
+          ...parsedResult,
+          provider: provider,
+          model: 'gemini-2.5-flash',
+          timestamp: new Date()
+        };
+        
+      } catch (parseError) {
+        console.warn('JSON parsing failed for life path projection, attempting to extract:', parseError.message);
+        
+        // Try to extract JSON from the response if it's embedded in text (same as generateFinancialAdvice)
+        const jsonMatch = result.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            const parsedResult = JSON.parse(jsonMatch[0]);
+            return {
+              ...parsedResult,
+              provider: provider,
+              model: 'gemini-2.5-flash',
+              timestamp: new Date()
+            };
+          } catch (secondParseError) {
+            console.warn('Second JSON parse attempt failed for life path:', secondParseError.message);
+          }
+        }
+        
+        // Final fallback if JSON parsing completely fails
+        throw new Error('Unable to parse life path projection from Gemini response');
+      }
+      
+    } catch (error) {
+      console.error('Life path projection error:', error.message);
+      
+      // Check for rate limiting
+      if (error.message?.includes('quota') || error.message?.includes('rate') || error.message?.includes('limit')) {
+        console.log('🚨 Gemini API rate limit detected, will use fallback');
+        throw new Error('RATE_LIMITED');
+      }
+      
+      throw new Error(`Failed to generate life path projection: ${error.message}`);
+    }
+  }
+
+  async calculateLifeEventImpact(userData, baselineProjection, lifeEvent, eventAge, currentAge) {
+    try {
+      const { model, provider } = this.getAvailableModel();
+      
+      const promptTemplate = PromptTemplate.fromTemplate(`
+        You are a financial impact analysis expert. Calculate how a specific life event will change a person's financial trajectory.
+        
+        USER DATA:
+        - Current Age: {currentAge}
+        - Monthly Income: {monthlyIncome}
+        - Monthly Expenses: {monthlyExpenses}
+        - Current Savings: {currentSavings}
+        - Risk Tolerance: {riskTolerance}
+        
+        BASELINE PROJECTION:
+        {baselineProjection}
+        
+        LIFE EVENT:
+        Event: {lifeEvent}
+        Age when event occurs: {eventAge}
+        
+        Analyze this life event and calculate:
+        1. Immediate financial impact (costs, income changes)
+        2. Short-term effects (1-5 years)
+        3. Long-term consequences (5+ years)
+        4. Net lifetime impact on wealth
+        
+        Use real statistical data about life events. Common examples:
+        - Education (MBA, grad school): Average costs and income boost
+        - Home purchase: Down payment, mortgage, equity building, tax benefits
+        - Retirement accounts: Tax benefits, compound growth
+        - Children: Average costs per year, education expenses
+        - Career changes: Income impact, benefits changes
+        - Business ventures: Startup costs, failure/success rates
+        
+        Format as JSON:
+        {{
+          "alternativeProjection": [
+            {{
+              "age": number,
+              "year": number,
+              "netWorth": number
+            }}
+          ],
+          "impact_analysis": {{
+            "immediate_cost": number,
+            "annual_ongoing_cost": number,
+            "income_change": number,
+            "long_term_benefit": number,
+            "net_lifetime_impact": number
+          }},
+          "eventSources": [
+            "Statistical source for this type of event",
+            "Research data used in calculations"
+          ],
+          "risk_factors": [
+            "Potential risks or variables that could affect outcomes"
+          ]
+        }}
+        
+        Be specific with calculations and cite real statistics where possible.
+      `);
+      
+      const chain = RunnableSequence.from([
+        promptTemplate,
+        model,
+        new StringOutputParser(),
+      ]);
+      
+      const result = await chain.invoke({
+        currentAge: currentAge,
+        monthlyIncome: userData.financialProfile?.monthlyIncome || userData.monthlyIncome || 0,
+        monthlyExpenses: userData.financialProfile?.monthlyExpenses || userData.monthlyExpenses || 0,
+        currentSavings: userData.financialProfile?.currentSavings || userData.currentSavings || 0,
+        riskTolerance: userData.onboarding?.riskTolerance || userData.riskTolerance || 'moderate',
+        baselineProjection: JSON.stringify(baselineProjection.slice(0, 10)), // Send sample for context
+        lifeEvent: lifeEvent,
+        eventAge: eventAge
+      });
+      
+      try {
+        let cleanResult = result.trim();
+        if (cleanResult.startsWith('```json')) {
+          cleanResult = cleanResult.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        }
+        return JSON.parse(cleanResult);
+      } catch (parseError) {
+        console.warn('Failed to parse life event impact JSON:', parseError.message);
+        throw new Error('Invalid response format from AI model');
+      }
+      
+    } catch (error) {
+      console.error('Life event impact calculation error:', error);
+      throw new Error(`Failed to calculate life event impact: ${error.message}`);
     }
   }
 }
