@@ -2,6 +2,10 @@
 
 A comprehensive MERN stack personal finance application that gamifies money management through AI-powered insights, goal tracking, and financial challenges.
 
+Deployed Site: https://intrst.onrender.com/
+Video Demo/Pitch: https://youtu.be/CODWQcOBRhA
+Devpost: https://devpost.com/software/intrst
+
 ## Features
 
 ### Dashboard
